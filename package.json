@@ -1,0 +1,18 @@
+{
+  "name": "fixed-assets-erp-pro",
+  "version": "1.0.0",
+  "description": "Fixed Assets ERP Pro - Arabic dashboard with Excel import/export, depreciation journal, users, permissions, and password recovery.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["fixed-assets", "depreciation", "erp", "excel", "arabic-dashboard"],
+  "author": "",
+  "license": "PRIVATE",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.18.3",
+    "nodemailer": "^6.9.13"
+  }
+}
