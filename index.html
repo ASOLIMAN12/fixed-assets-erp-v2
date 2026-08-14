@@ -4343,12 +4343,13 @@ async function dbSet(h){try{const db=await idb();await new Promise((res,rej)=>{c
 async function dbDel(){try{const db=await idb();await new Promise((res,rej)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).delete(KEY);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})}catch(e){}}
 async function perm(h,write=true){if(!h)return false;const opts={mode:write?'readwrite':'read'};try{let p=await h.queryPermission(opts);if(p==='granted')return true;p=await h.requestPermission(opts);return p==='granted'}catch(e){return false}}
 async function connect(){
+ if(location.protocol!=='file:'){state('وضع الخادم المركزي مفعل — لا حاجة لربط مجلد محلي','ok');return false}
  if(!('showDirectoryPicker' in window)){state('هذا المتصفح لا يدعم الحفظ المباشر للمجلد — سيتم استخدام التنزيل كبديل','warn');alert('استخدم أحدث Chrome أو Edge للاستفادة من الحفظ المباشر داخل مجلد البرنامج.');return false}
  try{dirHandle=await window.showDirectoryPicker({mode:'readwrite'});if(!(await perm(dirHandle,true)))throw new Error('لم يتم منح صلاحية الكتابة');await dbSet(dirHandle);state('مجلد البرنامج متصل: '+dirHandle.name,'ok');return true}
  catch(e){if(e?.name!=='AbortError'){state('تعذر ربط مجلد البرنامج: '+e.message,'err');alert('تعذر ربط المجلد: '+e.message)}return false}
 }
 async function restore(){dirHandle=await dbGet();if(!dirHandle){state('حفظ المتصفح متاح — لم يتم ربط مجلد البرنامج بعد','warn');return false}if(await perm(dirHandle,false)){state('تم العثور على مجلد البرنامج: '+dirHandle.name+' — يحتاج تأكيد الكتابة عند الحفظ','warn');return true}state('مجلد البرنامج محفوظ لكن يحتاج إعادة منح الصلاحية','warn');return false}
-async function ensure(){if(dirHandle&&await perm(dirHandle,true)){state('مجلد البرنامج متصل: '+dirHandle.name,'ok');return true}if(!dirHandle)dirHandle=await dbGet();if(dirHandle&&await perm(dirHandle,true)){state('مجلد البرنامج متصل: '+dirHandle.name,'ok');return true}return await connect()}
+async function ensure(){if(location.protocol!=='file:')return false;if(dirHandle&&await perm(dirHandle,true)){state('مجلد البرنامج متصل: '+dirHandle.name,'ok');return true}if(!dirHandle)dirHandle=await dbGet();if(dirHandle&&await perm(dirHandle,true)){state('مجلد البرنامج متصل: '+dirHandle.name,'ok');return true}return await connect()}
 async function disconnect(){dirHandle=null;await dbDel();state('تم فصل مجلد البرنامج — الحفظ سيكون بالتنزيل','warn')}
 async function folder(parts){if(!(await ensure()))throw new Error('لم يتم ربط مجلد البرنامج');let h=dirHandle;for(const part of parts)h=await h.getDirectoryHandle(part,{create:true});return h}
 async function writeText(parts,filename,text,mime='application/json'){const d=await folder(parts),fh=await d.getFileHandle(filename,{create:true}),w=await fh.createWritable();await w.write(new Blob([text],{type:mime+';charset=utf-8'}));await w.close();return [...parts,filename].join('/')}
@@ -4758,6 +4759,7 @@ async function permission(h,write=false){
  try{let p=await h.queryPermission(o);if(p==='granted')return true;p=await h.requestPermission(o);return p==='granted'}catch(e){return false}
 }
 async function pick(key){
+ if(location.protocol!=='file:')throw new Error('في النسخة الأونلاين يتم استخدام الخادم المركزي ولا يلزم اختيار مجلد.');
  if(!('showDirectoryPicker' in window))throw new Error('المتصفح لا يدعم Select Folder. استخدم Chrome أو Edge حديث.');
  const h=await showDirectoryPicker({mode:'readwrite'});
  if(!(await permission(h,true)))throw new Error('لم يتم منح صلاحية المجلد.');
@@ -5260,14 +5262,14 @@ function relatedData(){return {
  accountingSnapshots:parse('assetsProAccountingSnapshotsV327',{})
 }}
 function buildPayload(reason=''){const a=currentAssets();return {
- schema:MASTER_SCHEMA,dataVersion:MASTER_VERSION,appVersion:'3.2.8',updatedAt:new Date().toISOString(),
+ schema:MASTER_SCHEMA,dataVersion:MASTER_VERSION,appVersion:'3.3.3',updatedAt:new Date().toISOString(),
  updatedBy:sessionStorage.getItem('assetsProCurrentUser')||localStorage.getItem('currentUser')||'admin',reason,
  assetCount:a.length,totalCost:a.reduce((s,x)=>s+n(x.cost),0),assets:a.map(x=>({...x})),...relatedData()
 }}
 function idb(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(STORE))r.result.createObjectStore(STORE)};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
 async function getProgramHandle(){try{const db=await idb();return await new Promise((res,rej)=>{const tx=db.transaction(STORE,'readonly'),rq=tx.objectStore(STORE).get(KEY);rq.onsuccess=()=>res(rq.result||null);rq.onerror=()=>rej(rq.error)})}catch(e){return null}}
 async function permission(h,write=false,request=false){if(!h)return false;const o={mode:write?'readwrite':'read'};try{let p=await h.queryPermission(o);if(p==='granted')return true;if(request){p=await h.requestPermission(o);return p==='granted'}}catch(e){}return false}
-async function ensureProgramHandle(write=true){let h=await getProgramHandle();if(h&&await permission(h,write,true))return h;if(window.APSingleFileStorage?.connect){const ok=await window.APSingleFileStorage.connect();if(ok){h=await getProgramHandle();if(h&&await permission(h,write,true))return h}}return null}
+async function ensureProgramHandle(write=true){if(location.protocol!=='file:')return null;let h=await getProgramHandle();if(h&&await permission(h,write,true))return h;if(window.APSingleFileStorage?.connect){const ok=await window.APSingleFileStorage.connect();if(ok){h=await getProgramHandle();if(h&&await permission(h,write,true))return h}}return null}
 async function masterFolder(h,create=false){for(const p of MASTER_DIR)h=await h.getDirectoryHandle(p,{create});return h}
 async function readMaster(h){const d=await masterFolder(h,false),fh=await d.getFileHandle(MASTER_FILE),f=await fh.getFile();return JSON.parse(await f.text())}
 async function writeMaster(h,payload){const d=await masterFolder(h,true),fh=await d.getFileHandle(MASTER_FILE,{create:true}),w=await fh.createWritable();await w.write(new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'}));await w.close();return 'Data/Assets/'+MASTER_FILE}
@@ -5813,6 +5815,29 @@ document.addEventListener('assetspro:data-changed',e=>{
 });
 document.addEventListener('DOMContentLoaded',()=>setTimeout(loadCentralMaster,500));
 setInterval(()=>{if(localStorage.getItem('assetsProCentralMode')==='1')saveCentralMaster('حفظ مركزي دوري')},60000);
+})();
+</script>
+
+<script id="v333HostedModePatch">
+(()=>{'use strict';
+if(location.protocol==='file:')return;
+window.openHRPro=function(){location.href='/hr.html'};
+window.openAssetsPro=function(){location.href='/'};
+
+function hostedUi(){
+  const storage=document.getElementById('apStorageState');
+  if(storage){storage.textContent='وضع الخادم المركزي HTTPS — الحفظ على السيرفر';storage.className='status ok'}
+  const master=document.getElementById('apMasterDataState');
+  if(master && !/Central Master Data/.test(master.textContent||'')){master.textContent='جارٍ الاتصال بـ Central Master Data...';master.className='status warn'}
+  document.querySelectorAll('button').forEach(b=>{
+    const t=(b.textContent||'').trim();
+    if(/ربط مجلد البرنامج|فصل المجلد|ربط مجلد HR Pro/.test(t)){
+      b.style.display='none';
+    }
+  });
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hostedUi);
+else hostedUi();
 })();
 </script>
 </body>

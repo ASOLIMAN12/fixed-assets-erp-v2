@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HR Pro v3.3.2</title>
+<title>HR Pro v3.3.3</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#eef3f9;--card:#fff;--text:#1f2937;--muted:#64748b;--primary:#0f4c81;--primary2:#1d75bd;--success:#16a34a;--danger:#dc2626;--warning:#f59e0b;--border:#dbe3ee;--shadow:0 12px 30px rgba(15,76,129,.12)}
@@ -1019,12 +1019,12 @@ window.saveHRToProgramFolder=async function(){
 (()=>{'use strict';
 window.openHRPro=function(){
   if(location.protocol!=='file:'){alert('يجب فتح Assets Pro من ملف HTML مباشرة بعد فك الضغط.');return}
-  const target=new URL('../Data HR Pro/HRPro_v3.3.2_Relative_Link_Fixed.html',location.href);
+  const target=new URL('../Data HR Pro/HRPro_v3.3.3_Relative_Link_Fixed.html',location.href);
   location.href=target.href;
 };
 window.openAssetsPro=function(){
   if(location.protocol!=='file:'){alert('يجب فتح HR Pro من ملف HTML مباشرة بعد فك الضغط.');return}
-  const target=new URL('../Data Assets/AssetsPro_v3.3.2_Depreciation_Journal_Fixed.html',location.href);
+  const target=new URL('../Data Assets/AssetsPro_v3.3.3_Depreciation_Journal_Fixed.html',location.href);
   location.href=target.href;
 };
 })();
@@ -1072,12 +1072,20 @@ window.FolderBridge={getHandle,setHandle,permission,pick,ensure,openHtmlFromFold
 (()=>{'use strict';
 window.openHRPro=function(){
   if(location.protocol!=='file:'){alert('يجب فتح Assets Pro من ملف HTML مباشرة بعد فك الضغط.');return}
-  location.href=new URL('../Data HR Pro/HRPro_v3.3.2_Relative_Link_Fixed.html',location.href).href;
+  location.href=new URL('../Data HR Pro/HRPro_v3.3.3_Relative_Link_Fixed.html',location.href).href;
 };
 window.openAssetsPro=function(){
   if(location.protocol!=='file:'){alert('يجب فتح HR Pro من ملف HTML مباشرة بعد فك الضغط.');return}
-  location.href=new URL('../Data Assets/AssetsPro_v3.3.2_Depreciation_Journal_Fixed.html',location.href).href;
+  location.href=new URL('../Data Assets/AssetsPro_v3.3.3_Depreciation_Journal_Fixed.html',location.href).href;
 };
 })();
-</script></body>
+</script>
+<script id="v333HostedHrNavigation">
+(()=>{'use strict';
+if(location.protocol==='file:')return;
+window.openAssetsPro=function(){location.href='/'};
+window.openHRPro=function(){location.href='/hr.html'};
+})();
+</script>
+</body>
 </html>
