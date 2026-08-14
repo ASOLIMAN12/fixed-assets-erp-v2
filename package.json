@@ -1,0 +1,16 @@
+{
+  "name": "assets-pro-server",
+  "version": "3.3.2",
+  "private": true,
+  "description": "Assets Pro HTTPS-ready central server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
