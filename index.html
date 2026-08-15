@@ -207,7 +207,7 @@
     <aside>
       <div class="brand">
         <img id="sideLogo" class="mini-logo" alt="شعار الشركة" style="object-fit:contain;padding:5px" />
-        <div><strong>Assets Pro</strong><br><small>Enterprise v3.3.5</small></div>
+        <div><strong>Assets Pro</strong><br><small>Enterprise v3.3.6</small></div>
       </div>
       <nav class="ap-module-nav-static" id="apModuleSidebar">
 <button type="button" class="active" data-module="home">🏠 الرئيسية</button>
@@ -3105,7 +3105,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const seeded=[];
     (typeof journals!=='undefined'?journals:[]).slice(-5).reverse().forEach(j=>seeded.push({id:Date.now()+Math.random(),at:j.postedAt||j.date||new Date().toISOString(),type:'قيد',description:`تم حفظ القيد ${j.number||j.id||''}`,user:j.user||'system'}));
     (typeof assets!=='undefined'?assets:[]).flatMap(a=>(a.movements||[]).map(m=>({id:Date.now()+Math.random(),at:m.date||new Date().toISOString(),type:m.type||'حركة أصل',description:`${m.type||'حركة'} للأصل ${a.number} - ${a.name}`,user:m.user||'system'}))).sort((a,b)=>String(b.at).localeCompare(String(a.at))).slice(0,10).forEach(x=>seeded.push(x));
-    if(!seeded.length)seeded.push({id:Date.now(),at:new Date().toISOString(),type:'نظام',description:'تم تشغيل Assets Pro Enterprise v3.3.5',user:'system'});
+    if(!seeded.length)seeded.push({id:Date.now(),at:new Date().toISOString(),type:'نظام',description:'تم تشغيل Assets Pro Enterprise v3.3.6',user:'system'});
     localStorage.setItem('assetsProActivityLog',JSON.stringify(seeded));
   }
   function formatDateTime(v){try{return new Date(v).toLocaleString('ar-SA')}catch(e){return v||'—'}}
@@ -3223,7 +3223,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  window.showAsset360TabV14=function(tab,btn){document.querySelectorAll('#asset360Modal .tab-btn').forEach(b=>b.classList.remove('active'));btn?.classList.add('active');document.querySelectorAll('#asset360Modal .asset360-panel').forEach(p=>p.classList.remove('active'));document.getElementById(tab==='journals'?'asset360Journals':'asset360Audit')?.classList.add('active')};
  window.renderAsset360Extra=function(i){const x=assets?.[Number(i)];if(!x)return;const js=(journals||[]).filter(j=>(j.lines||[]).some(l=>String(l.description||'').includes(String(x.number))||String(l.assetNumber||'')===String(x.number)));const jp=document.getElementById('asset360Journals');if(jp)jp.innerHTML=js.length?`<div class="table-wrap"><table><thead><tr><th>رقم القيد</th><th>الفترة</th><th>الحالة</th><th>تاريخ الترحيل</th></tr></thead><tbody>${js.map(j=>`<tr><td>${escapeHtml(j.number||'')}</td><td>${escapeHtml(j.period||'')}</td><td>${escapeHtml(j.status||'')}</td><td>${escapeHtml(j.postedAt||'—')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="note">لا توجد قيود مرتبطة مباشرة برقم هذا الأصل.</div>';const ar=auditRows().filter(a=>a.entity==='asset'&&String(a.entityId)===String(x.number));const ap=document.getElementById('asset360Audit');if(ap)ap.innerHTML=ar.length?`<div class="timeline">${ar.map(a=>`<div class="timeline-item"><strong>${escapeHtml(new Date(a.at).toLocaleString('ar-SA'))} — ${escapeHtml(a.action)}</strong><div>${escapeHtml(a.description)}</div><small>${escapeHtml(a.user)}</small><div class="audit-change">${escapeHtml(a.changes||'')}</div></div>`).join('')}</div>`:'<div class="note">لا يوجد سجل تدقيق لهذا الأصل حتى الآن.</div>'};
  function enhanceNavigation(){document.addEventListener('click',e=>{const b=e.target.closest('nav button[data-page="auditTrail"]');if(b)setTimeout(renderAuditTrail,20)});document.addEventListener('assetspro:data-changed',()=>{try{renderAssets();updateDashboardFromAssets();renderReports();renderMaintenance();renderUsers();renderJournal();renderCommandCenter()}catch(e){}})}
- function boot(){createAuditPage();extendAsset360();installWrappers();enhanceNavigation();renderAuditTrail();if(!auditRows().length)apLogAudit('تشغيل النظام','system','v1.4.0','تم تشغيل Assets Pro Enterprise v3.3.5',null,{version:'1.4.0'});}
+ function boot(){createAuditPage();extendAsset360();installWrappers();enhanceNavigation();renderAuditTrail();if(!auditRows().length)apLogAudit('تشغيل النظام','system','v1.4.0','تم تشغيل Assets Pro Enterprise v3.3.6',null,{version:'1.4.0'});}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,400));else setTimeout(boot,400);
 })();
 </script>
@@ -5312,7 +5312,7 @@ async function initialize(){
  const r=await saveNow('تهيئة/اعتماد Master Data');if(r?.ok)alert('تم اعتماد البيانات الحالية كـ Master Data.\\nمن الآن الإصدارات الجديدة ستقرأ نفس الملف بدل إعادة إدخال التعديلات.');return !!r?.ok
 }
 function exportCopy(){const payload=buildPayload('نسخة تنزيل يدوية'),b=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='Assets_Master_Data_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1200)}
-async function startup(){if(location.protocol!=='file:'){state('جارٍ الاتصال بالسيرفر المركزي...','warn');return}
+async function startup(){if(location.protocol!=='file:'){state('جارٍ الاتصال بالسيرفر المركزي...','warn');for(let i=0;i<4;i++){if(window.AssetsCentralAPI){const ok=await window.AssetsCentralAPI.loadCentralMaster();if(ok)return true}await new Promise(r=>setTimeout(r,500));}state('تعذر تحميل Master Data من السيرفر المركزي — اضغط تحميل البيانات الرئيسية للمحاولة مجددًا','err');return false}
 const h=await getProgramHandle();if(!h){state('اربط مجلد البرنامج مرة واحدة ثم اعتمد Master Data','warn');return}if(!(await permission(h,false,false))){state('Master Data موجود لكنه يحتاج إعادة منح صلاحية المجلد','warn');return}await load(false)}
 async function quietSave(reason){try{const h=await getProgramHandle();if(!h||!(await permission(h,true,false)))return;await writeMaster(h,buildPayload(reason))}catch(e){}}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')quietSave('حفظ تلقائي عند مغادرة الصفحة')});
@@ -5777,17 +5777,22 @@ const API={
 };
 
 async function loadCentralMaster(){
+  const st=document.getElementById('apMasterDataState');
   try{
+    if(st){st.textContent='جارٍ تحميل Master Data من السيرفر المركزي...';st.className='status warn'}
     const data=await API.getJSON('/api/master-data');
-    if(data?.assets && window.APMasterData?.applyPayload){
-      window.APMasterData.applyPayload(data);
-      localStorage.setItem('assetsProCentralMode','1');
-      const st=document.getElementById('apMasterDataState');
-      if(st){st.textContent=`Central Master Data — ${data.assets.length} أصل — ${new Date(data.updatedAt||Date.now()).toLocaleString('ar-SA')}`;st.className='status ok'}
-      return true;
-    }
-  }catch(e){console.warn('Central Master Data unavailable',e)}
-  return false;
+    if(!data || data.schema!=='assets-pro-master-data-v1' || !Array.isArray(data.assets)) throw new Error('استجابة Master Data غير صالحة');
+    if(!window.APMasterData?.applyPayload) throw new Error('محرك Master Data غير جاهز');
+    window.APMasterData.applyPayload(data);
+    localStorage.setItem('assetsProCentralMode','1');
+    localStorage.setItem('assetsProMasterDataLastLoaded',new Date().toISOString());
+    if(st){st.textContent=`متصل بالسيرفر المركزي — Master Data محمّل — ${data.assets.length} أصل — ${new Date(data.updatedAt||Date.now()).toLocaleString('ar-SA')}`;st.className='status ok'}
+    return true;
+  }catch(e){
+    console.error('Central Master Data unavailable',e);
+    if(st){st.textContent='فشل تحميل Master Data من السيرفر المركزي: '+(e?.message||e);st.className='status err'}
+    return false;
+  }
 }
 async function saveCentralMaster(reason='تحديث مركزي'){
   try{
@@ -5828,11 +5833,16 @@ if(location.protocol==='file:')return;
 window.openHRPro=function(){location.href='/hr.html'};
 window.openAssetsPro=function(){location.href='/'};
 
-function hostedUi(){
+async function hostedUi(){
   const bar=document.getElementById('apSingleFileStorageBar');
-  if(bar){bar.innerHTML='<strong>☁️ السيرفر المركزي:</strong><span class="status ok">متصل عبر HTTPS — الحفظ المركزي مفعل</span>'}
   const master=document.getElementById('apMasterDataState');
-  if(master && !/Central Master Data/.test(master.textContent||'')){master.textContent='جارٍ الاتصال بـ Central Master Data...';master.className='status warn'}
+  if(bar){bar.innerHTML='<strong>☁️ السيرفر المركزي:</strong><span class="status warn">جارٍ فحص الاتصال...</span>'}
+  if(master && !/Master Data محمّل/.test(master.textContent||'')){master.textContent='جارٍ الاتصال بالسيرفر المركزي...';master.className='status warn'}
+  try{
+    const h=await fetch('/api/health',{cache:'no-store'}); if(!h.ok)throw new Error('HTTP '+h.status); const j=await h.json();
+    if(bar){bar.innerHTML='<strong>☁️ السيرفر المركزي:</strong><span class="status ok">متصل عبر HTTPS — الحفظ المركزي مفعل</span>'}
+  }catch(e){if(bar){bar.innerHTML='<strong>☁️ السيرفر المركزي:</strong><span class="status err">تعذر الاتصال بالسيرفر المركزي</span>'}}
+  if(window.AssetsCentralAPI) await window.AssetsCentralAPI.loadCentralMaster();
   const hr=document.getElementById('hrLinkBox');
   if(hr){hr.innerHTML='<strong>👥 HR Pro:</strong><button class="btn main" onclick="openHRPro()">فتح HR Pro</button><span class="status ok">يعمل من نفس الخادم — لا يحتاج ربط مجلد</span>'}
   document.querySelectorAll('button').forEach(b=>{
