@@ -5284,6 +5284,7 @@ function applyPayload(data){
  document.dispatchEvent(new CustomEvent('assetspro:data-changed',{detail:{type:'master-data-loaded',count:arr.length}}));
 }
 async function load(showAlerts=true){
+ if(location.protocol!=='file:' && window.AssetsCentralAPI)return await window.AssetsCentralAPI.loadCentralMaster();
  if(loading)return false;loading=true;
  try{
   state('جارٍ تحميل Master Data...','warn');const h=await ensureProgramHandle(false);if(!h){state('اربط مجلد Data Assets أولًا','err');return false}
@@ -5295,12 +5296,14 @@ async function load(showAlerts=true){
  }catch(err){console.error(err);state('فشل تحميل Master Data: '+err.message,'err');if(showAlerts)alert('فشل تحميل Master Data.\\n'+err.message);return false}finally{loading=false}
 }
 async function saveNow(reason='حفظ'){
+ if(location.protocol!=='file:' && window.AssetsCentralAPI){const ok=await window.AssetsCentralAPI.saveCentralMaster(reason);state(ok?'تم حفظ Master Data على السيرفر المركزي':'تعذر الحفظ على السيرفر المركزي',ok?'ok':'err');return {ok};}
  if(saving)return false;saving=true;
  try{const h=await ensureProgramHandle(true);if(!h){state('تعذر الوصول إلى مجلد البرنامج','err');return false};const payload=buildPayload(reason),path=await writeMaster(h,payload);localStorage.setItem('assetsProMasterDataLastSaved',payload.updatedAt);state(`Master Data محفوظ — ${payload.assetCount} أصل — ${new Date(payload.updatedAt).toLocaleString('ar-SA')}`,'ok');return {ok:true,path,payload}}
  catch(err){console.error(err);state('فشل حفظ Master Data: '+err.message,'err');return {ok:false,error:err.message}}finally{saving=false}
 }
-function scheduleSave(reason='تعديل بيانات'){clearTimeout(saveTimer);state('توجد تعديلات غير محفوظة في Master Data...','warn');saveTimer=setTimeout(()=>saveNow(reason),1200)}
+function scheduleSave(reason='تعديل بيانات'){clearTimeout(saveTimer);if(location.protocol!=='file:' && window.AssetsCentralAPI){state('جارٍ حفظ التعديلات على السيرفر المركزي...','warn');window.AssetsCentralAPI.scheduleCentralSave(reason);saveTimer=setTimeout(()=>state('متصل بالسيرفر المركزي — الحفظ التلقائي مفعل','ok'),1800);return}state('توجد تعديلات غير محفوظة في Master Data...','warn');saveTimer=setTimeout(()=>saveNow(reason),1200)}
 async function initialize(){
+ if(location.protocol!=='file:' && window.AssetsCentralAPI){const ok=await window.AssetsCentralAPI.saveCentralMaster('اعتماد البيانات الحالية كـ Master مركزي');state(ok?'تم اعتماد البيانات الحالية على السيرفر المركزي':'تعذر اعتماد البيانات على السيرفر المركزي',ok?'ok':'err');if(ok)alert('تم اعتماد البيانات الحالية كـ Master Data على السيرفر المركزي.');return ok}
  const a=currentAssets();if(!a.length){alert('لا توجد بيانات أصول حالية لاعتمادها كـ Master Data.');return false}
  const h=await ensureProgramHandle(true);if(!h)return false;
  let existing=null;try{existing=await readMaster(h)}catch(e){}
@@ -5309,7 +5312,8 @@ async function initialize(){
  const r=await saveNow('تهيئة/اعتماد Master Data');if(r?.ok)alert('تم اعتماد البيانات الحالية كـ Master Data.\\nمن الآن الإصدارات الجديدة ستقرأ نفس الملف بدل إعادة إدخال التعديلات.');return !!r?.ok
 }
 function exportCopy(){const payload=buildPayload('نسخة تنزيل يدوية'),b=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='Assets_Master_Data_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1200)}
-async function startup(){const h=await getProgramHandle();if(!h){state('اربط مجلد البرنامج مرة واحدة ثم اعتمد Master Data','warn');return}if(!(await permission(h,false,false))){state('Master Data موجود لكنه يحتاج إعادة منح صلاحية المجلد','warn');return}await load(false)}
+async function startup(){if(location.protocol!=='file:'){state('جارٍ الاتصال بالسيرفر المركزي...','warn');return}
+const h=await getProgramHandle();if(!h){state('اربط مجلد البرنامج مرة واحدة ثم اعتمد Master Data','warn');return}if(!(await permission(h,false,false))){state('Master Data موجود لكنه يحتاج إعادة منح صلاحية المجلد','warn');return}await load(false)}
 async function quietSave(reason){try{const h=await getProgramHandle();if(!h||!(await permission(h,true,false)))return;await writeMaster(h,buildPayload(reason))}catch(e){}}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')quietSave('حفظ تلقائي عند مغادرة الصفحة')});
 document.addEventListener('assetspro:data-changed',e=>{if(e.detail?.type!=='master-data-loaded')scheduleSave('تغيير بيانات البرنامج')});
@@ -5825,15 +5829,15 @@ window.openHRPro=function(){location.href='/hr.html'};
 window.openAssetsPro=function(){location.href='/'};
 
 function hostedUi(){
-  const storage=document.getElementById('apStorageState');
-  if(storage){storage.textContent='وضع الخادم المركزي HTTPS — الحفظ على السيرفر';storage.className='status ok'}
+  const bar=document.getElementById('apSingleFileStorageBar');
+  if(bar){bar.innerHTML='<strong>☁️ السيرفر المركزي:</strong><span class="status ok">متصل عبر HTTPS — الحفظ المركزي مفعل</span>'}
   const master=document.getElementById('apMasterDataState');
   if(master && !/Central Master Data/.test(master.textContent||'')){master.textContent='جارٍ الاتصال بـ Central Master Data...';master.className='status warn'}
+  const hr=document.getElementById('hrLinkBox');
+  if(hr){hr.innerHTML='<strong>👥 HR Pro:</strong><button class="btn main" onclick="openHRPro()">فتح HR Pro</button><span class="status ok">يعمل من نفس الخادم — لا يحتاج ربط مجلد</span>'}
   document.querySelectorAll('button').forEach(b=>{
     const t=(b.textContent||'').trim();
-    if(/ربط مجلد البرنامج|فصل المجلد|ربط مجلد HR Pro/.test(t)){
-      b.style.display='none';
-    }
+    if(/ربط مجلد البرنامج|فصل المجلد|ربط مجلد HR Pro/.test(t))b.style.display='none';
   });
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hostedUi);
