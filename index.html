@@ -207,7 +207,7 @@
     <aside>
       <div class="brand">
         <img id="sideLogo" class="mini-logo" alt="شعار الشركة" style="object-fit:contain;padding:5px" />
-        <div><strong>Assets Pro</strong><br><small>Enterprise v3.3.2</small></div>
+        <div><strong>Assets Pro</strong><br><small>Enterprise v3.3.5</small></div>
       </div>
       <nav class="ap-module-nav-static" id="apModuleSidebar">
 <button type="button" class="active" data-module="home">🏠 الرئيسية</button>
@@ -302,8 +302,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
           <div class="card dashboard-kpi" onclick="openDashboardDetail('cost')"><small>إجمالي تكلفة الأصول</small><h3>0.00 ر.س</h3></div>
           <div class="card dashboard-kpi" onclick="openDashboardDetail('accum')"><small>مجمع الإهلاك</small><h3>0.00 ر.س</h3></div>
           <div class="card dashboard-kpi" onclick="openDashboardDetail('net')"><small>صافي القيمة الدفترية</small><h3>0.00 ر.س</h3></div>
-          <div class="card dashboard-kpi" onclick="openDashboardDetail('monthly')"><small>إهلاك الشهر</small><h3>0.00 ر.س</h3></div>
-          <div class="card dashboard-kpi" onclick="openDashboardDetail('status')"><small>مجموع الإهلاك الشهري</small><h3>0.00 ر.س</h3></div>
+          <div class="card dashboard-kpi" onclick="navigateToPage('depreciation')"><small>إهلاك الشهر</small><h3>0.00 ر.س</h3></div>
+          <div class="card dashboard-kpi" onclick="navigateToPage('depreciation')"><small>مجموع الإهلاك الشهري</small><h3>0.00 ر.س</h3></div>
         </div>
         <div class="grid-2">
           <div class="card"><h3>توزيع الأصول حسب مركز التكلفة</h3><div id="dashboardCostCenterChart" class="bar-chart"></div></div>
@@ -2980,6 +2980,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   }
   function activateAllScreenCards(){
     document.querySelectorAll('.page .mini').forEach(card=>{
+      if(card.closest('#depreciation'))return;
       if(card.dataset.bound==='1')return; card.dataset.bound='1'; card.classList.add('interactive-card');
       card.addEventListener('click',()=>{
         const label=card.querySelector('small')?.textContent?.trim()||'التفاصيل';
@@ -3104,7 +3105,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const seeded=[];
     (typeof journals!=='undefined'?journals:[]).slice(-5).reverse().forEach(j=>seeded.push({id:Date.now()+Math.random(),at:j.postedAt||j.date||new Date().toISOString(),type:'قيد',description:`تم حفظ القيد ${j.number||j.id||''}`,user:j.user||'system'}));
     (typeof assets!=='undefined'?assets:[]).flatMap(a=>(a.movements||[]).map(m=>({id:Date.now()+Math.random(),at:m.date||new Date().toISOString(),type:m.type||'حركة أصل',description:`${m.type||'حركة'} للأصل ${a.number} - ${a.name}`,user:m.user||'system'}))).sort((a,b)=>String(b.at).localeCompare(String(a.at))).slice(0,10).forEach(x=>seeded.push(x));
-    if(!seeded.length)seeded.push({id:Date.now(),at:new Date().toISOString(),type:'نظام',description:'تم تشغيل Assets Pro Enterprise v3.3.2',user:'system'});
+    if(!seeded.length)seeded.push({id:Date.now(),at:new Date().toISOString(),type:'نظام',description:'تم تشغيل Assets Pro Enterprise v3.3.5',user:'system'});
     localStorage.setItem('assetsProActivityLog',JSON.stringify(seeded));
   }
   function formatDateTime(v){try{return new Date(v).toLocaleString('ar-SA')}catch(e){return v||'—'}}
@@ -3222,7 +3223,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  window.showAsset360TabV14=function(tab,btn){document.querySelectorAll('#asset360Modal .tab-btn').forEach(b=>b.classList.remove('active'));btn?.classList.add('active');document.querySelectorAll('#asset360Modal .asset360-panel').forEach(p=>p.classList.remove('active'));document.getElementById(tab==='journals'?'asset360Journals':'asset360Audit')?.classList.add('active')};
  window.renderAsset360Extra=function(i){const x=assets?.[Number(i)];if(!x)return;const js=(journals||[]).filter(j=>(j.lines||[]).some(l=>String(l.description||'').includes(String(x.number))||String(l.assetNumber||'')===String(x.number)));const jp=document.getElementById('asset360Journals');if(jp)jp.innerHTML=js.length?`<div class="table-wrap"><table><thead><tr><th>رقم القيد</th><th>الفترة</th><th>الحالة</th><th>تاريخ الترحيل</th></tr></thead><tbody>${js.map(j=>`<tr><td>${escapeHtml(j.number||'')}</td><td>${escapeHtml(j.period||'')}</td><td>${escapeHtml(j.status||'')}</td><td>${escapeHtml(j.postedAt||'—')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="note">لا توجد قيود مرتبطة مباشرة برقم هذا الأصل.</div>';const ar=auditRows().filter(a=>a.entity==='asset'&&String(a.entityId)===String(x.number));const ap=document.getElementById('asset360Audit');if(ap)ap.innerHTML=ar.length?`<div class="timeline">${ar.map(a=>`<div class="timeline-item"><strong>${escapeHtml(new Date(a.at).toLocaleString('ar-SA'))} — ${escapeHtml(a.action)}</strong><div>${escapeHtml(a.description)}</div><small>${escapeHtml(a.user)}</small><div class="audit-change">${escapeHtml(a.changes||'')}</div></div>`).join('')}</div>`:'<div class="note">لا يوجد سجل تدقيق لهذا الأصل حتى الآن.</div>'};
  function enhanceNavigation(){document.addEventListener('click',e=>{const b=e.target.closest('nav button[data-page="auditTrail"]');if(b)setTimeout(renderAuditTrail,20)});document.addEventListener('assetspro:data-changed',()=>{try{renderAssets();updateDashboardFromAssets();renderReports();renderMaintenance();renderUsers();renderJournal();renderCommandCenter()}catch(e){}})}
- function boot(){createAuditPage();extendAsset360();installWrappers();enhanceNavigation();renderAuditTrail();if(!auditRows().length)apLogAudit('تشغيل النظام','system','v1.4.0','تم تشغيل Assets Pro Enterprise v3.3.2',null,{version:'1.4.0'});}
+ function boot(){createAuditPage();extendAsset360();installWrappers();enhanceNavigation();renderAuditTrail();if(!auditRows().length)apLogAudit('تشغيل النظام','system','v1.4.0','تم تشغيل Assets Pro Enterprise v3.3.5',null,{version:'1.4.0'});}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,400));else setTimeout(boot,400);
 })();
 </script>
@@ -5014,14 +5015,10 @@ async function autoBackup(reason,period=''){
     journals:(typeof journals!=='undefined'&&Array.isArray(journals))?journals.map(x=>({...x,lines:(x.lines||[]).map(l=>({...l}))})):[]
   };
   let arr=autoBackups();arr.unshift(payload);arr=arr.slice(0,MAX_AUTO_BACKUPS);save(AUTO_BACKUP_KEY,arr);
-  // Also ask the existing program-folder backup engine to persist a file when a folder is linked.
-  try{
-    if(typeof window.APAssetBackupNow==='function'){
-      const r=await window.APAssetBackupNow();
-      payload.externalBackup=!!r?.ok;
-      save(AUTO_BACKUP_KEY,arr);
-    }
-  }catch(e){console.warn('Automatic external backup skipped',e)}
+  // النسخ التلقائي هنا داخلي فقط ولا يبدأ أي تنزيل للمتصفح.
+  // تنزيل/حفظ ملف Backup خارجي يتم فقط من زر النسخة الاحتياطية المخصص.
+  payload.externalBackup=false;
+  save(AUTO_BACKUP_KEY,arr);
   renderBackups();
   return payload;
 }
@@ -5218,8 +5215,11 @@ window.unpostJournal=async function(){
 // Make manual month-close use the same governance rule.
 window.toggleMonthClose=function(){
   const p=typeof depPeriod==='function'?depPeriod():'';
-  if(isLocked(p)){return unlock(p)}
-  alert('الإقفال المحاسبي يتم تلقائيًا بعد نجاح التحقق وترحيل قيد الإهلاك. أنشئ القيد ثم اضغط «ترحيل القيد».');
+  if(!p)return;
+  // إذا كانت الفترة مقفلة محاسبيًا بعد الترحيل، استخدم فك الإقفال الإداري.
+  if(isLocked(p))return unlock(p);
+  // الإقفال التشغيلي للشهر يعمل مباشرة بعد وجود احتساب محفوظ.
+  return original.toggleMonthClose?.apply(this,arguments);
 };
 
 // Protect imported master data with an internal automatic snapshot.
