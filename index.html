@@ -207,7 +207,7 @@
     <aside>
       <div class="brand">
         <img id="sideLogo" class="mini-logo" alt="شعار الشركة" style="object-fit:contain;padding:5px" />
-        <div><strong>Assets Pro</strong><br><small>Enterprise v3.4.0</small></div>
+        <div><strong>Assets Pro</strong><br><small>Enterprise v3.4.1</small></div>
       </div>
       <nav class="ap-module-nav-static" id="apModuleSidebar">
 <button type="button" class="active" data-module="home">🏠 الرئيسية</button>
@@ -1590,6 +1590,11 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   }
   function openDashboardDetail(type){
     dashboardDetailType=type;dashboardDetailSearch.value='';
+    const modal=document.getElementById('dashboardDetailModal');
+    if(modal){
+      const filterRow=modal.querySelector('.filter-row'); if(filterRow)filterRow.style.display='grid';
+      const tableWrap=modal.querySelector('.table-wrap'); if(tableWrap)tableWrap.style.display='block';
+    }
     const labels={cost:'تفاصيل إجمالي تكلفة الأصول',accum:'تفاصيل مجمع الإهلاك',net:'تفاصيل صافي القيمة الدفترية',monthly:'تفاصيل الإهلاك الشهري',status:'حالة الأصول والإهلاك'};
     dashboardDetailTitle.textContent=labels[type]||'تفاصيل المؤشر';
     const ccs=[...new Set(assets.map(x=>x.costCenter).filter(Boolean))],gs=[...new Set(assets.map(x=>x.group).filter(Boolean))];
@@ -3000,10 +3005,29 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         const label=card.querySelector('small')?.textContent?.trim()||'التفاصيل';
         const value=card.querySelector('strong')?.textContent?.trim()||'—';
         const page=card.closest('.page')?.id||'';
+
+        // Asset KPI cards must use the real asset dataset, not the generic empty modal.
+        if(page==='assets'){
+          const kpiMap={
+            'عدد الأصول':'cost',
+            'إجمالي التكلفة':'cost',
+            'مجمع الإهلاك':'accum',
+            'صافي القيمة':'net',
+            'الإهلاك الشهري':'monthly'
+          };
+          const type=kpiMap[label];
+          if(type){ openDashboardDetail(type); return; }
+        }
+
+        // For depreciation KPI cards, keep the user on the real calculated results.
+        if(page==='depreciation'){
+          if(label.includes('المحتسبة')){ openDepKpiDetail('calculated'); return; }
+          if(label.includes('المتجاوزة')||label.includes('المستبعدة')){ openDepKpiDetail('skipped'); return; }
+          openDepKpiDetail('all'); return;
+        }
+
         let html=`<h3>${escapeHtml(label)}</h3><div class="detail-grid"><div class="mini"><small>القيمة الحالية</small><strong>${escapeHtml(value)}</strong></div><div class="mini"><small>الشاشة</small><strong>${escapeHtml(document.querySelector(`[data-page="${page}"]`)?.textContent||page)}</strong></div></div>`;
-        if(page==='assets') html+=`<p class="note">اضغط على أي صف أو زر 360° لفتح بطاقة الأصل الكاملة. عدد الأصول المعروضة حاليًا: ${document.querySelectorAll('#assetsBody tr').length}</p>`;
-        else if(page==='depreciation') html+=`<p class="note">تعرض التفاصيل وفق السنة والشهر والفلاتر المختارة. عدد النتائج الحالية: ${document.querySelectorAll('#depBody tr').length}</p>`;
-        else if(page==='journals') html+=`<p class="note">تعرض التفاصيل الخاصة بالقيد والفترة الحالية. عدد سطور القيد: ${document.querySelectorAll('#journalBody tr').length}</p>`;
+        if(page==='journals') html+=`<p class="note">تعرض التفاصيل الخاصة بالقيد والفترة الحالية. عدد سطور القيد: ${document.querySelectorAll('#journalBody tr').length}</p>`;
         else if(page==='maintenance') html+=`<p class="note">عدد خطط الصيانة الظاهرة: ${document.querySelectorAll('#maintenanceBody tr').length}</p>`;
         else if(page==='users') html+=`<p class="note">عدد المستخدمين الظاهرين: ${document.querySelectorAll('#usersBody tr').length}</p>`;
         showUniversalDetails(label,html);
