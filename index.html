@@ -207,7 +207,7 @@
     <aside>
       <div class="brand">
         <img id="sideLogo" class="mini-logo" alt="شعار الشركة" style="object-fit:contain;padding:5px" />
-        <div><strong>Assets Pro</strong><br><small>Enterprise v3.3.6</small></div>
+        <div><strong>Assets Pro</strong><br><small>Enterprise v3.3.8</small></div>
       </div>
       <nav class="ap-module-nav-static" id="apModuleSidebar">
 <button type="button" class="active" data-module="home">🏠 الرئيسية</button>
@@ -3119,7 +3119,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const seeded=[];
     (typeof journals!=='undefined'?journals:[]).slice(-5).reverse().forEach(j=>seeded.push({id:Date.now()+Math.random(),at:j.postedAt||j.date||new Date().toISOString(),type:'قيد',description:`تم حفظ القيد ${j.number||j.id||''}`,user:j.user||'system'}));
     (typeof assets!=='undefined'?assets:[]).flatMap(a=>(a.movements||[]).map(m=>({id:Date.now()+Math.random(),at:m.date||new Date().toISOString(),type:m.type||'حركة أصل',description:`${m.type||'حركة'} للأصل ${a.number} - ${a.name}`,user:m.user||'system'}))).sort((a,b)=>String(b.at).localeCompare(String(a.at))).slice(0,10).forEach(x=>seeded.push(x));
-    if(!seeded.length)seeded.push({id:Date.now(),at:new Date().toISOString(),type:'نظام',description:'تم تشغيل Assets Pro Enterprise v3.3.7',user:'system'});
+    if(!seeded.length)seeded.push({id:Date.now(),at:new Date().toISOString(),type:'نظام',description:'تم تشغيل Assets Pro Enterprise v3.3.8',user:'system'});
     localStorage.setItem('assetsProActivityLog',JSON.stringify(seeded));
   }
   function formatDateTime(v){try{return new Date(v).toLocaleString('ar-SA')}catch(e){return v||'—'}}
@@ -3182,6 +3182,16 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   }
   document.addEventListener('DOMContentLoaded',()=>{seedActivity();bindNewNavigation();setTimeout(()=>{renderCommandCenter();runDataValidation();refreshSystemHealth();},700)});
   if(document.readyState!=='loading'){seedActivity();bindNewNavigation();setTimeout(()=>{renderCommandCenter();runDataValidation();refreshSystemHealth();},700)}
+
+  // v3.3.8: expose handlers used by inline onclick attributes.
+  // The core app runs inside an IIFE, so without these exports the browser cannot
+  // resolve functions such as openDepKpiDetail() from inline card clicks.
+  window.navigateToPage = navigateToPage;
+  window.openDepKpiDetail = openDepKpiDetail;
+  window.openDashboardDetail = openDashboardDetail;
+  window.openAsset360 = openAsset360;
+  window.closeDashboardDetail = closeDashboardDetail;
+  window.goToAssetsFromDetail = goToAssetsFromDetail;
 })();
 </script>
 
@@ -3237,7 +3247,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  window.showAsset360TabV14=function(tab,btn){document.querySelectorAll('#asset360Modal .tab-btn').forEach(b=>b.classList.remove('active'));btn?.classList.add('active');document.querySelectorAll('#asset360Modal .asset360-panel').forEach(p=>p.classList.remove('active'));document.getElementById(tab==='journals'?'asset360Journals':'asset360Audit')?.classList.add('active')};
  window.renderAsset360Extra=function(i){const x=assets?.[Number(i)];if(!x)return;const js=(journals||[]).filter(j=>(j.lines||[]).some(l=>String(l.description||'').includes(String(x.number))||String(l.assetNumber||'')===String(x.number)));const jp=document.getElementById('asset360Journals');if(jp)jp.innerHTML=js.length?`<div class="table-wrap"><table><thead><tr><th>رقم القيد</th><th>الفترة</th><th>الحالة</th><th>تاريخ الترحيل</th></tr></thead><tbody>${js.map(j=>`<tr><td>${escapeHtml(j.number||'')}</td><td>${escapeHtml(j.period||'')}</td><td>${escapeHtml(j.status||'')}</td><td>${escapeHtml(j.postedAt||'—')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="note">لا توجد قيود مرتبطة مباشرة برقم هذا الأصل.</div>';const ar=auditRows().filter(a=>a.entity==='asset'&&String(a.entityId)===String(x.number));const ap=document.getElementById('asset360Audit');if(ap)ap.innerHTML=ar.length?`<div class="timeline">${ar.map(a=>`<div class="timeline-item"><strong>${escapeHtml(new Date(a.at).toLocaleString('ar-SA'))} — ${escapeHtml(a.action)}</strong><div>${escapeHtml(a.description)}</div><small>${escapeHtml(a.user)}</small><div class="audit-change">${escapeHtml(a.changes||'')}</div></div>`).join('')}</div>`:'<div class="note">لا يوجد سجل تدقيق لهذا الأصل حتى الآن.</div>'};
  function enhanceNavigation(){document.addEventListener('click',e=>{const b=e.target.closest('nav button[data-page="auditTrail"]');if(b)setTimeout(renderAuditTrail,20)});document.addEventListener('assetspro:data-changed',()=>{try{renderAssets();updateDashboardFromAssets();renderReports();renderMaintenance();renderUsers();renderJournal();renderCommandCenter()}catch(e){}})}
- function boot(){createAuditPage();extendAsset360();installWrappers();enhanceNavigation();renderAuditTrail();if(!auditRows().length)apLogAudit('تشغيل النظام','system','v1.4.0','تم تشغيل Assets Pro Enterprise v3.3.7',null,{version:'1.4.0'});}
+ function boot(){createAuditPage();extendAsset360();installWrappers();enhanceNavigation();renderAuditTrail();if(!auditRows().length)apLogAudit('تشغيل النظام','system','v1.4.0','تم تشغيل Assets Pro Enterprise v3.3.8',null,{version:'1.4.0'});}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,400));else setTimeout(boot,400);
 })();
 </script>
