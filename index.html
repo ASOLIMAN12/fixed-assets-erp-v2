@@ -207,7 +207,7 @@
     <aside>
       <div class="brand">
         <img id="sideLogo" class="mini-logo" alt="شعار الشركة" style="object-fit:contain;padding:5px" />
-        <div><strong>Assets Pro</strong><br><small>Enterprise v3.3.8</small></div>
+        <div><strong>Assets Pro</strong><br><small>Enterprise v3.4.0</small></div>
       </div>
       <nav class="ap-module-nav-static" id="apModuleSidebar">
 <button type="button" class="active" data-module="home">🏠 الرئيسية</button>
@@ -478,7 +478,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
             </div>
             <div class="toolbar" style="margin:0">
               <button class="btn main" onclick="previewDepreciation()">معاينة الاحتساب</button>
-              <button class="btn" onclick="recalculateDepreciation()">إعادة الاحتساب</button>
+              <button class="btn" id="recalculateDepBtn" type="button" onclick="return recalculateDepreciation(event)">إعادة الاحتساب</button>
               <button class="btn" onclick="toggleMonthClose()">إقفال / فتح الشهر</button>
               <button class="btn" onclick="exportDepJournalExcel()">تصدير قيد الإهلاك Excel</button>
             </div>
@@ -3119,7 +3119,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const seeded=[];
     (typeof journals!=='undefined'?journals:[]).slice(-5).reverse().forEach(j=>seeded.push({id:Date.now()+Math.random(),at:j.postedAt||j.date||new Date().toISOString(),type:'قيد',description:`تم حفظ القيد ${j.number||j.id||''}`,user:j.user||'system'}));
     (typeof assets!=='undefined'?assets:[]).flatMap(a=>(a.movements||[]).map(m=>({id:Date.now()+Math.random(),at:m.date||new Date().toISOString(),type:m.type||'حركة أصل',description:`${m.type||'حركة'} للأصل ${a.number} - ${a.name}`,user:m.user||'system'}))).sort((a,b)=>String(b.at).localeCompare(String(a.at))).slice(0,10).forEach(x=>seeded.push(x));
-    if(!seeded.length)seeded.push({id:Date.now(),at:new Date().toISOString(),type:'نظام',description:'تم تشغيل Assets Pro Enterprise v3.3.8',user:'system'});
+    if(!seeded.length)seeded.push({id:Date.now(),at:new Date().toISOString(),type:'نظام',description:'تم تشغيل Assets Pro Enterprise v3.3.9',user:'system'});
     localStorage.setItem('assetsProActivityLog',JSON.stringify(seeded));
   }
   function formatDateTime(v){try{return new Date(v).toLocaleString('ar-SA')}catch(e){return v||'—'}}
@@ -3247,7 +3247,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  window.showAsset360TabV14=function(tab,btn){document.querySelectorAll('#asset360Modal .tab-btn').forEach(b=>b.classList.remove('active'));btn?.classList.add('active');document.querySelectorAll('#asset360Modal .asset360-panel').forEach(p=>p.classList.remove('active'));document.getElementById(tab==='journals'?'asset360Journals':'asset360Audit')?.classList.add('active')};
  window.renderAsset360Extra=function(i){const x=assets?.[Number(i)];if(!x)return;const js=(journals||[]).filter(j=>(j.lines||[]).some(l=>String(l.description||'').includes(String(x.number))||String(l.assetNumber||'')===String(x.number)));const jp=document.getElementById('asset360Journals');if(jp)jp.innerHTML=js.length?`<div class="table-wrap"><table><thead><tr><th>رقم القيد</th><th>الفترة</th><th>الحالة</th><th>تاريخ الترحيل</th></tr></thead><tbody>${js.map(j=>`<tr><td>${escapeHtml(j.number||'')}</td><td>${escapeHtml(j.period||'')}</td><td>${escapeHtml(j.status||'')}</td><td>${escapeHtml(j.postedAt||'—')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="note">لا توجد قيود مرتبطة مباشرة برقم هذا الأصل.</div>';const ar=auditRows().filter(a=>a.entity==='asset'&&String(a.entityId)===String(x.number));const ap=document.getElementById('asset360Audit');if(ap)ap.innerHTML=ar.length?`<div class="timeline">${ar.map(a=>`<div class="timeline-item"><strong>${escapeHtml(new Date(a.at).toLocaleString('ar-SA'))} — ${escapeHtml(a.action)}</strong><div>${escapeHtml(a.description)}</div><small>${escapeHtml(a.user)}</small><div class="audit-change">${escapeHtml(a.changes||'')}</div></div>`).join('')}</div>`:'<div class="note">لا يوجد سجل تدقيق لهذا الأصل حتى الآن.</div>'};
  function enhanceNavigation(){document.addEventListener('click',e=>{const b=e.target.closest('nav button[data-page="auditTrail"]');if(b)setTimeout(renderAuditTrail,20)});document.addEventListener('assetspro:data-changed',()=>{try{renderAssets();updateDashboardFromAssets();renderReports();renderMaintenance();renderUsers();renderJournal();renderCommandCenter()}catch(e){}})}
- function boot(){createAuditPage();extendAsset360();installWrappers();enhanceNavigation();renderAuditTrail();if(!auditRows().length)apLogAudit('تشغيل النظام','system','v1.4.0','تم تشغيل Assets Pro Enterprise v3.3.8',null,{version:'1.4.0'});}
+ function boot(){createAuditPage();extendAsset360();installWrappers();enhanceNavigation();renderAuditTrail();if(!auditRows().length)apLogAudit('تشغيل النظام','system','v1.4.0','تم تشغيل Assets Pro Enterprise v3.3.9',null,{version:'1.4.0'});}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,400));else setTimeout(boot,400);
 })();
 </script>
@@ -5165,12 +5165,61 @@ window.executeDepreciation=async function(){
   await autoBackup('قبل حفظ احتساب الإهلاك',period);
   return original.executeDepreciation?.apply(this,arguments);
 };
-window.recalculateDepreciation=async function(){
-  const period=typeof depPeriod==='function'?depPeriod():'';
-  if(period&&isLocked(period)){alert('الفترة '+period+' مقفلة ومعتمدة. لا يمكن إعادة الاحتساب.');return}
-  await autoBackup('قبل إعادة احتساب الإهلاك',period);
-  return original.recalculateDepreciation?.apply(this,arguments);
+window.recalculateDepreciation=async function(event){
+  try{
+    if(event?.preventDefault) event.preventDefault();
+    const period=typeof depPeriod==='function'?depPeriod():'';
+    if(!period){alert('تعذر تحديد فترة الإهلاك.');return false;}
+
+    // A locked month must never make the button look unresponsive.
+    // Offer an explicit unlock/open flow, then continue recalculation.
+    const govLocked=typeof isLocked==='function' && isLocked(period);
+    const legacyLocked=typeof closedPeriods!=='undefined' && Array.isArray(closedPeriods) && closedPeriods.includes(period);
+    if(govLocked || legacyLocked){
+      if(govLocked && typeof isAdmin==='function' && !isAdmin()){
+        alert('الفترة '+period+' مقفلة ومعتمدة. فك الإقفال متاح لمدير النظام Admin فقط.');
+        return false;
+      }
+      if(!confirm('الفترة '+period+' مقفلة. هل تريد فك/فتح الفترة ثم إعادة الاحتساب؟')) return false;
+      if(govLocked){
+        const locks=currentLocks();
+        if(locks[period]){
+          locks[period].locked=false;
+          locks[period].unlockedAt=new Date().toISOString();
+          locks[period].unlockedBy=typeof userName==='function'?userName():'admin';
+          save(LOCK_KEY,locks);
+        }
+      }
+      if(typeof closedPeriods!=='undefined' && Array.isArray(closedPeriods)){
+        const ci=closedPeriods.indexOf(period);
+        if(ci>=0) closedPeriods.splice(ci,1);
+        localStorage.setItem('assetsProClosedPeriods',JSON.stringify(closedPeriods));
+      }
+      try{updateDepStatus()}catch(e){}
+      try{renderLocks()}catch(e){}
+    }
+
+    await autoBackup('قبل إعادة احتساب الإهلاك',period);
+    const i=depreciationRuns.findIndex(r=>r.period===period);
+    if(i>=0 && !confirm('سيتم حذف نتيجة الاحتساب السابقة للفترة '+period+' وإعادة الحساب من بيانات الأصل الأساسية. متابعة؟')) return false;
+    if(i>=0){
+      depreciationRuns.splice(i,1);
+      localStorage.setItem('assetsProDepRuns',JSON.stringify(depreciationRuns));
+    }
+    currentPreview=null;
+    previewDepreciation();
+    return false;
+  }catch(err){
+    console.error('Recalculate depreciation error:',err);
+    alert('حدث خطأ أثناء إعادة الاحتساب: '+(err?.message||err));
+    return false;
+  }
 };
+// Force the visible button to use the final handler even if an older inline/global handler was cached.
+setTimeout(()=>{
+  const b=document.getElementById('recalculateDepBtn');
+  if(b){b.onclick=(e)=>window.recalculateDepreciation(e);}
+},0);
 
 // Gate journal generation if accounting period is locked.
 window.generateJournal=async function(){
@@ -5881,6 +5930,144 @@ else hostedUi();
   document.addEventListener('keydown',function(e){
     if((e.key==='Enter'||e.key===' ') && e.target && e.target.classList && e.target.classList.contains('interactive-card')){ e.preventDefault(); e.target.click(); }
   });
+</script>
+
+<style id="apPerformanceV340Styles">
+/* Assets Pro v3.4.0 — Performance */
+.page:not(.active){content-visibility:hidden!important}
+.page.active{content-visibility:visible}
+.page.active .section-card,.page.active .card,.page.active .table-wrap{content-visibility:auto;contain-intrinsic-size:1px 640px}
+.table-wrap tbody{contain:layout style paint}
+.table-wrap img{content-visibility:auto}
+body.ap-fast-nav *{scroll-behavior:auto!important}
+body.ap-fast-nav .page.active{animation:none!important}
+</style>
+<script id="apPerformanceV340Patch">
+(()=>{'use strict';
+  if(window.__AP_PERF_340__) return;
+  window.__AP_PERF_340__=true;
+
+  const PERF={version:'3.4.0',pending:new Set(),wrapped:new Map(),lastPage:null};
+  window.APPerformance=PERF;
+  const nextFrame=(fn)=>requestAnimationFrame(()=>requestAnimationFrame(fn));
+
+  // 1) لا نعيد رسم الشاشات الثقيلة وهي مخفية. يتم تأجيل الرسم حتى فتح الصفحة.
+  const renderMap={
+    renderAssets:'assets',
+    renderDepResults:'depreciation',
+    renderReports:'reports',
+    renderMaintenance:'maintenance',
+    renderJournal:'journal',
+    renderDashboardDetail:'dashboard',
+    renderUsers:'users',
+    renderCommandCenter:'commandcenter',
+    renderAuditTrail:'auditTrail',
+    renderAssetHealth:'assethealth',
+    renderReplacement:'replacement',
+    renderWarranty:'warranty',
+    renderVendors:'vendors',
+    renderInventory:'inventory',
+    renderLabels:'barcodeLabels'
+  };
+  function pageVisible(id){
+    const p=document.getElementById(id);
+    return !p || p.classList.contains('active');
+  }
+  function wrapHiddenRender(name,pageId){
+    const original=window[name];
+    if(typeof original!=='function' || original.__apPerf340) return;
+    function wrapped(){
+      if(!pageVisible(pageId)){
+        PERF.pending.add(name);
+        wrapped.__lastArgs=arguments;
+        return;
+      }
+      PERF.pending.delete(name);
+      return original.apply(this,arguments);
+    }
+    wrapped.__apPerf340=true;
+    wrapped.__original=original;
+    window[name]=wrapped;
+    PERF.wrapped.set(name,wrapped);
+  }
+  Object.entries(renderMap).forEach(([n,p])=>wrapHiddenRender(n,p));
+
+  function flushPage(pageId){
+    for(const [name,pid] of Object.entries(renderMap)){
+      if(pid!==pageId || !PERF.pending.has(name)) continue;
+      const fn=window[name];
+      try{ fn?.apply(window,fn.__lastArgs||[]); }catch(e){ console.warn('Deferred render failed:',name,e); }
+    }
+  }
+
+  // 2) Debounce للبحث النصي حتى لا يعاد بناء جدول كامل مع كل حرف.
+  function debounce(fn,wait=160){let t;return function(){const self=this,args=arguments;clearTimeout(t);t=setTimeout(()=>fn.apply(self,args),wait)}}
+  const searchBindings={
+    assetSearch:['renderAssets',170],
+    depSearch:['renderDepResults',170],
+    reportSearch:['renderReports',180],
+    mSearch:['renderMaintenance',180],
+    journalSearch:['renderJournal',180],
+    dashboardDetailSearch:['renderDashboardDetail',160],
+    globalSearchInput:['renderGlobal',120]
+  };
+  function installDebouncedSearches(){
+    Object.entries(searchBindings).forEach(([id,[fnName,delay]])=>{
+      const el=document.getElementById(id); if(!el || el.dataset.apPerf340) return;
+      el.dataset.apPerf340='1';
+      // إزالة oninput القديم الذي يعيد الرسم فورياً.
+      el.removeAttribute('oninput');
+      el.oninput=null;
+      el.addEventListener('input',debounce(()=>{
+        const fn=window[fnName];
+        if(typeof fn==='function') fn(el.value);
+      },delay),{passive:true});
+    });
+  }
+
+  // 3) التنقل: لا تعيد تهيئة الصفحة الحالية، وأجّل الأعمال الثقيلة إلى frame لاحق.
+  document.addEventListener('click',e=>{
+    const b=e.target.closest?.('nav button[data-page], [data-page]');
+    if(!b?.dataset?.page) return;
+    const id=b.dataset.page;
+    const active=document.querySelector('.page.active')?.id;
+    if(active===id){
+      // نمنع فقط معالجة تحسين الأداء؛ لا نلغي event حتى لا نكسر الوظائف الخاصة.
+      PERF.lastPage=id;
+      return;
+    }
+    document.body.classList.add('ap-fast-nav');
+    PERF.lastPage=id;
+    nextFrame(()=>{
+      flushPage(id);
+      installDebouncedSearches();
+      document.body.classList.remove('ap-fast-nav');
+    });
+  },true);
+
+  // 4) بعد تغيّر البيانات نحدّث الصفحة المفتوحة فقط، والباقي يبقى dirty حتى فتحه.
+  document.addEventListener('assetspro:data-changed',()=>{
+    const active=document.querySelector('.page.active')?.id;
+    Object.entries(renderMap).forEach(([name,pid])=>{
+      if(pid!==active) PERF.pending.add(name);
+    });
+  },{passive:true});
+
+  // 5) تقليل تكلفة scroll handlers القديمة إن وجدت، باستخدام passive افتراضياً للـ wheel/touch.
+  try{
+    document.addEventListener('touchstart',()=>{}, {passive:true});
+    document.addEventListener('wheel',()=>{}, {passive:true});
+  }catch(e){}
+
+  function boot(){
+    installDebouncedSearches();
+    const active=document.querySelector('.page.active')?.id;
+    if(active) flushPage(active);
+    console.info('Assets Pro Performance Optimizer v3.4.0 active');
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,80),{once:true});
+  else setTimeout(boot,80);
+})();
 </script>
 </body>
 </html>
