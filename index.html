@@ -207,7 +207,7 @@
     <aside>
       <div class="brand">
         <img id="sideLogo" class="mini-logo" alt="شعار الشركة" style="object-fit:contain;padding:5px" />
-        <div><strong>Assets Pro</strong><br><small>Enterprise v3.4.1</small></div>
+        <div><strong>Assets Pro</strong><br><small>Enterprise v3.3.9</small></div>
       </div>
       <nav class="ap-module-nav-static" id="apModuleSidebar">
 <button type="button" class="active" data-module="home">🏠 الرئيسية</button>
@@ -1590,11 +1590,6 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   }
   function openDashboardDetail(type){
     dashboardDetailType=type;dashboardDetailSearch.value='';
-    const modal=document.getElementById('dashboardDetailModal');
-    if(modal){
-      const filterRow=modal.querySelector('.filter-row'); if(filterRow)filterRow.style.display='grid';
-      const tableWrap=modal.querySelector('.table-wrap'); if(tableWrap)tableWrap.style.display='block';
-    }
     const labels={cost:'تفاصيل إجمالي تكلفة الأصول',accum:'تفاصيل مجمع الإهلاك',net:'تفاصيل صافي القيمة الدفترية',monthly:'تفاصيل الإهلاك الشهري',status:'حالة الأصول والإهلاك'};
     dashboardDetailTitle.textContent=labels[type]||'تفاصيل المؤشر';
     const ccs=[...new Set(assets.map(x=>x.costCenter).filter(Boolean))],gs=[...new Set(assets.map(x=>x.group).filter(Boolean))];
@@ -3005,29 +3000,10 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         const label=card.querySelector('small')?.textContent?.trim()||'التفاصيل';
         const value=card.querySelector('strong')?.textContent?.trim()||'—';
         const page=card.closest('.page')?.id||'';
-
-        // Asset KPI cards must use the real asset dataset, not the generic empty modal.
-        if(page==='assets'){
-          const kpiMap={
-            'عدد الأصول':'cost',
-            'إجمالي التكلفة':'cost',
-            'مجمع الإهلاك':'accum',
-            'صافي القيمة':'net',
-            'الإهلاك الشهري':'monthly'
-          };
-          const type=kpiMap[label];
-          if(type){ openDashboardDetail(type); return; }
-        }
-
-        // For depreciation KPI cards, keep the user on the real calculated results.
-        if(page==='depreciation'){
-          if(label.includes('المحتسبة')){ openDepKpiDetail('calculated'); return; }
-          if(label.includes('المتجاوزة')||label.includes('المستبعدة')){ openDepKpiDetail('skipped'); return; }
-          openDepKpiDetail('all'); return;
-        }
-
         let html=`<h3>${escapeHtml(label)}</h3><div class="detail-grid"><div class="mini"><small>القيمة الحالية</small><strong>${escapeHtml(value)}</strong></div><div class="mini"><small>الشاشة</small><strong>${escapeHtml(document.querySelector(`[data-page="${page}"]`)?.textContent||page)}</strong></div></div>`;
-        if(page==='journals') html+=`<p class="note">تعرض التفاصيل الخاصة بالقيد والفترة الحالية. عدد سطور القيد: ${document.querySelectorAll('#journalBody tr').length}</p>`;
+        if(page==='assets') html+=`<p class="note">اضغط على أي صف أو زر 360° لفتح بطاقة الأصل الكاملة. عدد الأصول المعروضة حاليًا: ${document.querySelectorAll('#assetsBody tr').length}</p>`;
+        else if(page==='depreciation') html+=`<p class="note">تعرض التفاصيل وفق السنة والشهر والفلاتر المختارة. عدد النتائج الحالية: ${document.querySelectorAll('#depBody tr').length}</p>`;
+        else if(page==='journals') html+=`<p class="note">تعرض التفاصيل الخاصة بالقيد والفترة الحالية. عدد سطور القيد: ${document.querySelectorAll('#journalBody tr').length}</p>`;
         else if(page==='maintenance') html+=`<p class="note">عدد خطط الصيانة الظاهرة: ${document.querySelectorAll('#maintenanceBody tr').length}</p>`;
         else if(page==='users') html+=`<p class="note">عدد المستخدمين الظاهرين: ${document.querySelectorAll('#usersBody tr').length}</p>`;
         showUniversalDetails(label,html);
@@ -5924,6 +5900,95 @@ setInterval(()=>{if(localStorage.getItem('assetsProCentralMode')==='1')saveCentr
 })();
 </script>
 
+
+<script id="v341UniversalDrilldownFix">
+(()=>{'use strict';
+const esc=v=>typeof window.escapeHtml==='function'?window.escapeHtml(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const money=v=>Number(v||0).toLocaleString('ar-SA',{minimumFractionDigits:2,maximumFractionDigits:2});
+const norm=v=>String(v??'').replace(/[\u200e\u200f\u202a-\u202e]/g,'').replace(/\s+/g,' ').trim();
+function allAssets(){
+  try{const a=window.APDataEngine?.getAssets?.();if(Array.isArray(a))return a}catch(e){}
+  try{const a=JSON.parse(localStorage.getItem('assetsProAssets')||'[]');if(Array.isArray(a))return a}catch(e){}
+  try{if(Array.isArray(window.assetsData))return window.assetsData}catch(e){}
+  return [];
+}
+function modalParts(){
+  const modal=document.getElementById('dashboardDetailModal');
+  if(!modal)return {};
+  const card=modal.querySelector('.modal-card');
+  const title=document.getElementById('dashboardDetailTitle');
+  const summary=document.getElementById('dashboardDetailSummary');
+  let content=document.getElementById('apUniversalDrilldownContent');
+  if(!content&&card){content=document.createElement('div');content.id='apUniversalDrilldownContent';content.className='hidden';const row=card.querySelector('.filter-row');card.insertBefore(content,row||card.lastChild);}
+  let filters=document.getElementById('dashboardDetailFilters');
+  if(!filters&&card){filters=card.querySelector('.filter-row');if(filters)filters.id='dashboardDetailFilters';}
+  let tableWrap=document.getElementById('dashboardDetailTableWrap');
+  if(!tableWrap&&card){tableWrap=card.querySelector('.table-wrap');if(tableWrap)tableWrap.id='dashboardDetailTableWrap';}
+  return {modal,title,summary,content,filters,tableWrap};
+}
+function rowsTable(rows){
+  return `<div class="table-wrap" style="max-height:55vh"><table><thead><tr><th>رقم الأصل</th><th>اسم الأصل</th><th>مركز التكلفة</th><th>المجموعة</th><th>التكلفة</th><th>المجمع</th><th>صافي القيمة</th><th>الإهلاك الشهري</th><th>الحالة</th></tr></thead><tbody>${rows.length?rows.map(x=>{const net=Number(x.cost||0)-Number(x.accum||0);return `<tr><td>${esc(x.number)}</td><td>${esc(x.name)}</td><td>${esc(x.costCenter)}</td><td>${esc(x.group)}</td><td>${money(x.cost)}</td><td>${money(x.accum)}</td><td>${money(net)}</td><td>${money(x.monthly)}</td><td>${esc(x.status||'Active')}</td></tr>`}).join(''):'<tr><td colspan="9" style="text-align:center">لا توجد بيانات مطابقة.</td></tr>'}</tbody></table></div>`;
+}
+function show(title,html,summaryHtml=''){
+  const p=modalParts();if(!p.modal)return false;
+  if(p.title)p.title.textContent=title||'التفاصيل';
+  if(p.summary)p.summary.innerHTML=summaryHtml||'';
+  if(p.content){p.content.innerHTML=html;p.content.classList.remove('hidden');}
+  if(p.filters)p.filters.style.display='none';
+  if(p.tableWrap)p.tableWrap.style.display='none';
+  p.modal.classList.remove('hidden');
+  return true;
+}
+function showAssets(title,rows){
+  rows=Array.isArray(rows)?rows:[];
+  const cost=rows.reduce((s,x)=>s+Number(x.cost||0),0),acc=rows.reduce((s,x)=>s+Number(x.accum||0),0),monthly=rows.reduce((s,x)=>s+Number(x.monthly||0),0);
+  const summary=`<div class="mini"><small>عدد الأصول</small><strong>${rows.length}</strong></div><div class="mini"><small>إجمالي التكلفة</small><strong>${money(cost)}</strong></div><div class="mini"><small>مجمع الإهلاك</small><strong>${money(acc)}</strong></div><div class="mini"><small>صافي القيمة</small><strong>${money(cost-acc)}</strong></div><div class="mini"><small>الإهلاك الشهري</small><strong>${money(monthly)}</strong></div>`;
+  return show(title,rowsTable(rows),summary);
+}
+function showKpi(type){
+  const rows=allAssets().slice();
+  const labels={cost:'تفاصيل إجمالي تكلفة الأصول',accum:'تفاصيل مجمع الإهلاك',net:'تفاصيل صافي القيمة الدفترية',monthly:'تفاصيل الإهلاك الشهري',status:'حالة الأصول والإهلاك'};
+  const value=x=>type==='net'?Number(x.cost||0)-Number(x.accum||0):type==='status'?Number(x.monthly||0):Number(x[type]||0);
+  rows.sort((a,b)=>value(b)-value(a));
+  showAssets(labels[type]||'تفاصيل المؤشر',rows);
+}
+// Override the old detail functions so every dashboard/module uses the current central Master Data.
+window.openDashboardDetail=showKpi;
+window.openCostCenterDetails=function(cc){const key=norm(cc);showAssets('أصول مركز التكلفة — '+key,allAssets().filter(x=>norm(x.costCenter)===key));};
+window.openGroupDetails=function(g){const key=norm(g);showAssets('أصول المجموعة — '+key,allAssets().filter(x=>norm(x.group)===key));};
+window.openMapLocation=window.openCostCenterDetails;
+// Fix the generic mini-card details: old code targeted DOM ids that do not exist.
+window.showUniversalDetails=function(title,bodyHtml){return show(title,`<div class="section-card" style="margin:0">${bodyHtml||''}</div>`);};
+// Catch existing .mini cards, including dynamically rendered pages, and show real contextual content instead of an empty modal.
+function bindMiniCards(root=document){
+  root.querySelectorAll?.('.page .mini').forEach(card=>{
+    if(card.closest('#depreciation'))return;
+    if(card.dataset.v341Bound==='1')return;
+    card.dataset.v341Bound='1';card.classList.add('interactive-card');
+    card.addEventListener('click',e=>{
+      // Preserve explicit working actions when present.
+      const inline=card.getAttribute('onclick')||'';
+      if(inline && /openDashboardDetail|openCostCenterDetails|openGroupDetails|navigateToPage/.test(inline))return;
+      const label=card.querySelector('small')?.textContent?.trim()||'التفاصيل';
+      const value=card.querySelector('strong,h3')?.textContent?.trim()||'—';
+      const page=card.closest('.page')?.id||'';
+      let html=`<div class="detail-grid"><div class="mini"><small>المؤشر</small><strong>${esc(label)}</strong></div><div class="mini"><small>القيمة الحالية</small><strong>${esc(value)}</strong></div></div>`;
+      if(page==='assets')html+=rowsTable(allAssets());
+      else html+=`<p class="note">تفاصيل ${esc(label)} من الشاشة الحالية. إذا كان المؤشر مرتبطًا بالأصول فسيتم استخدام Master Data المركزي مباشرة.</p>`;
+      show(label,html);
+    },true);
+  });
+}
+const oldClose=window.closeDashboardDetail;
+window.closeDashboardDetail=function(){const p=modalParts();if(p.content){p.content.innerHTML='';p.content.classList.add('hidden')}if(p.filters)p.filters.style.display='';if(p.tableWrap)p.tableWrap.style.display='';if(p.modal)p.modal.classList.add('hidden');else if(typeof oldClose==='function')oldClose();};
+function refresh(){modalParts();bindMiniCards();}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(refresh,300));else setTimeout(refresh,100);
+document.addEventListener('click',e=>{if(e.target.closest?.('[data-page]'))setTimeout(refresh,120)},true);
+document.addEventListener('assetspro:data-changed',()=>setTimeout(refresh,80));
+window.APUniversalDrilldown={show,showAssets,allAssets,refresh};
+})();
+</script>
+
 <script id="v333HostedModePatch">
 (()=>{'use strict';
 if(location.protocol==='file:')return;
@@ -5954,144 +6019,6 @@ else hostedUi();
   document.addEventListener('keydown',function(e){
     if((e.key==='Enter'||e.key===' ') && e.target && e.target.classList && e.target.classList.contains('interactive-card')){ e.preventDefault(); e.target.click(); }
   });
-</script>
-
-<style id="apPerformanceV340Styles">
-/* Assets Pro v3.4.0 — Performance */
-.page:not(.active){content-visibility:hidden!important}
-.page.active{content-visibility:visible}
-.page.active .section-card,.page.active .card,.page.active .table-wrap{content-visibility:auto;contain-intrinsic-size:1px 640px}
-.table-wrap tbody{contain:layout style paint}
-.table-wrap img{content-visibility:auto}
-body.ap-fast-nav *{scroll-behavior:auto!important}
-body.ap-fast-nav .page.active{animation:none!important}
-</style>
-<script id="apPerformanceV340Patch">
-(()=>{'use strict';
-  if(window.__AP_PERF_340__) return;
-  window.__AP_PERF_340__=true;
-
-  const PERF={version:'3.4.0',pending:new Set(),wrapped:new Map(),lastPage:null};
-  window.APPerformance=PERF;
-  const nextFrame=(fn)=>requestAnimationFrame(()=>requestAnimationFrame(fn));
-
-  // 1) لا نعيد رسم الشاشات الثقيلة وهي مخفية. يتم تأجيل الرسم حتى فتح الصفحة.
-  const renderMap={
-    renderAssets:'assets',
-    renderDepResults:'depreciation',
-    renderReports:'reports',
-    renderMaintenance:'maintenance',
-    renderJournal:'journal',
-    renderDashboardDetail:'dashboard',
-    renderUsers:'users',
-    renderCommandCenter:'commandcenter',
-    renderAuditTrail:'auditTrail',
-    renderAssetHealth:'assethealth',
-    renderReplacement:'replacement',
-    renderWarranty:'warranty',
-    renderVendors:'vendors',
-    renderInventory:'inventory',
-    renderLabels:'barcodeLabels'
-  };
-  function pageVisible(id){
-    const p=document.getElementById(id);
-    return !p || p.classList.contains('active');
-  }
-  function wrapHiddenRender(name,pageId){
-    const original=window[name];
-    if(typeof original!=='function' || original.__apPerf340) return;
-    function wrapped(){
-      if(!pageVisible(pageId)){
-        PERF.pending.add(name);
-        wrapped.__lastArgs=arguments;
-        return;
-      }
-      PERF.pending.delete(name);
-      return original.apply(this,arguments);
-    }
-    wrapped.__apPerf340=true;
-    wrapped.__original=original;
-    window[name]=wrapped;
-    PERF.wrapped.set(name,wrapped);
-  }
-  Object.entries(renderMap).forEach(([n,p])=>wrapHiddenRender(n,p));
-
-  function flushPage(pageId){
-    for(const [name,pid] of Object.entries(renderMap)){
-      if(pid!==pageId || !PERF.pending.has(name)) continue;
-      const fn=window[name];
-      try{ fn?.apply(window,fn.__lastArgs||[]); }catch(e){ console.warn('Deferred render failed:',name,e); }
-    }
-  }
-
-  // 2) Debounce للبحث النصي حتى لا يعاد بناء جدول كامل مع كل حرف.
-  function debounce(fn,wait=160){let t;return function(){const self=this,args=arguments;clearTimeout(t);t=setTimeout(()=>fn.apply(self,args),wait)}}
-  const searchBindings={
-    assetSearch:['renderAssets',170],
-    depSearch:['renderDepResults',170],
-    reportSearch:['renderReports',180],
-    mSearch:['renderMaintenance',180],
-    journalSearch:['renderJournal',180],
-    dashboardDetailSearch:['renderDashboardDetail',160],
-    globalSearchInput:['renderGlobal',120]
-  };
-  function installDebouncedSearches(){
-    Object.entries(searchBindings).forEach(([id,[fnName,delay]])=>{
-      const el=document.getElementById(id); if(!el || el.dataset.apPerf340) return;
-      el.dataset.apPerf340='1';
-      // إزالة oninput القديم الذي يعيد الرسم فورياً.
-      el.removeAttribute('oninput');
-      el.oninput=null;
-      el.addEventListener('input',debounce(()=>{
-        const fn=window[fnName];
-        if(typeof fn==='function') fn(el.value);
-      },delay),{passive:true});
-    });
-  }
-
-  // 3) التنقل: لا تعيد تهيئة الصفحة الحالية، وأجّل الأعمال الثقيلة إلى frame لاحق.
-  document.addEventListener('click',e=>{
-    const b=e.target.closest?.('nav button[data-page], [data-page]');
-    if(!b?.dataset?.page) return;
-    const id=b.dataset.page;
-    const active=document.querySelector('.page.active')?.id;
-    if(active===id){
-      // نمنع فقط معالجة تحسين الأداء؛ لا نلغي event حتى لا نكسر الوظائف الخاصة.
-      PERF.lastPage=id;
-      return;
-    }
-    document.body.classList.add('ap-fast-nav');
-    PERF.lastPage=id;
-    nextFrame(()=>{
-      flushPage(id);
-      installDebouncedSearches();
-      document.body.classList.remove('ap-fast-nav');
-    });
-  },true);
-
-  // 4) بعد تغيّر البيانات نحدّث الصفحة المفتوحة فقط، والباقي يبقى dirty حتى فتحه.
-  document.addEventListener('assetspro:data-changed',()=>{
-    const active=document.querySelector('.page.active')?.id;
-    Object.entries(renderMap).forEach(([name,pid])=>{
-      if(pid!==active) PERF.pending.add(name);
-    });
-  },{passive:true});
-
-  // 5) تقليل تكلفة scroll handlers القديمة إن وجدت، باستخدام passive افتراضياً للـ wheel/touch.
-  try{
-    document.addEventListener('touchstart',()=>{}, {passive:true});
-    document.addEventListener('wheel',()=>{}, {passive:true});
-  }catch(e){}
-
-  function boot(){
-    installDebouncedSearches();
-    const active=document.querySelector('.page.active')?.id;
-    if(active) flushPage(active);
-    console.info('Assets Pro Performance Optimizer v3.4.0 active');
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,80),{once:true});
-  else setTimeout(boot,80);
-})();
 </script>
 </body>
 </html>
