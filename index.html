@@ -207,7 +207,7 @@
     <aside>
       <div class="brand">
         <img id="sideLogo" class="mini-logo" alt="شعار الشركة" style="object-fit:contain;padding:5px" />
-        <div><strong>Assets Pro</strong><br><small>Enterprise v3.4.3</small></div>
+        <div><strong>Assets Pro</strong><br><small>Enterprise v3.4.4</small></div>
       </div>
       <nav class="ap-module-nav-static" id="apModuleSidebar">
 <button type="button" class="active" data-module="home">🏠 الرئيسية</button>
@@ -3143,7 +3143,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const seeded=[];
     (typeof journals!=='undefined'?journals:[]).slice(-5).reverse().forEach(j=>seeded.push({id:Date.now()+Math.random(),at:j.postedAt||j.date||new Date().toISOString(),type:'قيد',description:`تم حفظ القيد ${j.number||j.id||''}`,user:j.user||'system'}));
     (typeof assets!=='undefined'?assets:[]).flatMap(a=>(a.movements||[]).map(m=>({id:Date.now()+Math.random(),at:m.date||new Date().toISOString(),type:m.type||'حركة أصل',description:`${m.type||'حركة'} للأصل ${a.number} - ${a.name}`,user:m.user||'system'}))).sort((a,b)=>String(b.at).localeCompare(String(a.at))).slice(0,10).forEach(x=>seeded.push(x));
-    if(!seeded.length)seeded.push({id:Date.now(),at:new Date().toISOString(),type:'نظام',description:'تم تشغيل Assets Pro Enterprise v3.4.2',user:'system'});
+    if(!seeded.length)seeded.push({id:Date.now(),at:new Date().toISOString(),type:'نظام',description:'تم تشغيل Assets Pro Enterprise v3.4.4',user:'system'});
     localStorage.setItem('assetsProActivityLog',JSON.stringify(seeded));
   }
   function formatDateTime(v){try{return new Date(v).toLocaleString('ar-SA')}catch(e){return v||'—'}}
@@ -3271,7 +3271,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  window.showAsset360TabV14=function(tab,btn){document.querySelectorAll('#asset360Modal .tab-btn').forEach(b=>b.classList.remove('active'));btn?.classList.add('active');document.querySelectorAll('#asset360Modal .asset360-panel').forEach(p=>p.classList.remove('active'));document.getElementById(tab==='journals'?'asset360Journals':'asset360Audit')?.classList.add('active')};
  window.renderAsset360Extra=function(i){const x=assets?.[Number(i)];if(!x)return;const js=(journals||[]).filter(j=>(j.lines||[]).some(l=>String(l.description||'').includes(String(x.number))||String(l.assetNumber||'')===String(x.number)));const jp=document.getElementById('asset360Journals');if(jp)jp.innerHTML=js.length?`<div class="table-wrap"><table><thead><tr><th>رقم القيد</th><th>الفترة</th><th>الحالة</th><th>تاريخ الترحيل</th></tr></thead><tbody>${js.map(j=>`<tr><td>${escapeHtml(j.number||'')}</td><td>${escapeHtml(j.period||'')}</td><td>${escapeHtml(j.status||'')}</td><td>${escapeHtml(j.postedAt||'—')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="note">لا توجد قيود مرتبطة مباشرة برقم هذا الأصل.</div>';const ar=auditRows().filter(a=>a.entity==='asset'&&String(a.entityId)===String(x.number));const ap=document.getElementById('asset360Audit');if(ap)ap.innerHTML=ar.length?`<div class="timeline">${ar.map(a=>`<div class="timeline-item"><strong>${escapeHtml(new Date(a.at).toLocaleString('ar-SA'))} — ${escapeHtml(a.action)}</strong><div>${escapeHtml(a.description)}</div><small>${escapeHtml(a.user)}</small><div class="audit-change">${escapeHtml(a.changes||'')}</div></div>`).join('')}</div>`:'<div class="note">لا يوجد سجل تدقيق لهذا الأصل حتى الآن.</div>'};
  function enhanceNavigation(){document.addEventListener('click',e=>{const b=e.target.closest('nav button[data-page="auditTrail"]');if(b)setTimeout(renderAuditTrail,20)});document.addEventListener('assetspro:data-changed',()=>{try{renderAssets();updateDashboardFromAssets();renderReports();renderMaintenance();renderUsers();renderJournal();renderCommandCenter()}catch(e){}})}
- function boot(){createAuditPage();extendAsset360();installWrappers();enhanceNavigation();renderAuditTrail();if(!auditRows().length)apLogAudit('تشغيل النظام','system','v1.4.0','تم تشغيل Assets Pro Enterprise v3.4.2',null,{version:'1.4.0'});}
+ function boot(){createAuditPage();extendAsset360();installWrappers();enhanceNavigation();renderAuditTrail();if(!auditRows().length)apLogAudit('تشغيل النظام','system','v3.4.4','تم تشغيل Assets Pro Enterprise v3.4.4',null,{version:'3.4.4'});}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,400));else setTimeout(boot,400);
 })();
 </script>
@@ -3386,7 +3386,7 @@ function enhanceTable(table){
  table.addEventListener('click',e=>{const tr=e.target.closest('tbody tr');if(!tr||e.target.closest('button,a,input,select'))return;const hs=qsa('thead th',table);const pairs=Array.from(tr.cells).map((td,i)=>({label:cellValue(hs[i])||('الحقل '+(i+1)),value:cellValue(td)})).filter(x=>x.value);openDetails('تفاصيل السجل',pairs)});
  const wrap=table.closest('.enterprise-table-wrap'); if(!wrap||wrap.previousElementSibling?.classList.contains('enterprise-toolbar'))return;
  const bar=document.createElement('div');bar.className='enterprise-toolbar';bar.innerHTML='<button type="button" data-act="csv">تصدير المعروض CSV</button><button type="button" data-act="cols">إظهار/إخفاء الأعمدة</button><button type="button" data-act="print">طباعة الجدول</button><span class="enterprise-row-count">السجلات: '+(table.tBodies[0]?.rows.length||0)+'</span>';
- wrap.parentElement.insertBefore(bar,wrap);bar.onclick=e=>{const a=e.target.dataset.act;if(a==='csv')exportTable(table,document.title);if(a==='cols')columnMenu(table);if(a==='print')window.print()};
+ wrap.parentElement.insertBefore(bar,wrap);bar.onclick=e=>{const a=e.target.dataset.act;if(a==='csv')exportTable(table,document.title);if(a==='cols')columnMenu(table);if(a==='print'){if(window.AP342?.printTable)window.AP342.printTable(table,document.querySelector('.page.active .page-title')?.textContent||'تقرير Assets Pro');else window.print()}};
 }
 function enhanceAll(root=document){qsa('table',root).forEach(enhanceTable);qsa('.enterprise-row-count').forEach(el=>{const t=el.parentElement?.nextElementSibling?.querySelector('table');if(t){const v='السجلات: '+(t.tBodies[0]?.rows.length||0);if(el.textContent!==v)el.textContent=v}})}
 function getDataArray(names){for(const n of names){try{if(Array.isArray(window[n]))return window[n]}catch(e){}}return[]}
@@ -3953,10 +3953,10 @@ window.APSafeAssetClear={request,serverBackup,clearOnlyAssets};if(document.ready
 .barcode-name{font-size:11px;max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .inv-progress{height:14px;background:#e5e7eb;border-radius:999px;overflow:hidden}.inv-progress>div{height:100%;background:#111827}
 @media print{
-  body *{visibility:hidden!important}
-  #barcodePrintArea,#barcodePrintArea *{visibility:visible!important}
-  #barcodePrintArea{position:absolute;left:0;top:0;width:100%}
-  .barcode-label{break-inside:avoid}
+  body.barcode-print-mode *{visibility:hidden!important}
+  body.barcode-print-mode #barcodePrintArea,body.barcode-print-mode #barcodePrintArea *{visibility:visible!important}
+  body.barcode-print-mode #barcodePrintArea{position:absolute;left:0;top:0;width:100%}
+  body.barcode-print-mode .barcode-label{break-inside:avoid}
 }
 </style>
 <style id="v329LifecycleCSS">
@@ -5742,7 +5742,8 @@ function doPrint(arr,copies=1){
  let area=document.getElementById('barcodePrintArea');if(!area){area=document.createElement('div');area.id='barcodePrintArea';document.body.appendChild(area)}
  area.innerHTML=labels.join('');
  const prev=document.getElementById('barcodePreview');if(prev)prev.innerHTML=labels.slice(0,6).join('');
- setTimeout(()=>window.print(),100);
+ document.body.classList.add('barcode-print-mode');
+ setTimeout(()=>{window.print();setTimeout(()=>document.body.classList.remove('barcode-print-mode'),700)},100);
 }
 function printOne(){const id=document.getElementById('barcodeAsset')?.value,a=assetsList().find(x=>String(x.number)===String(id)),copies=Math.max(1,n(document.getElementById('barcodeCopies')?.value)||1);if(a)doPrint([a],copies)}
 function printCenter(){const c=document.getElementById('invTargetCenter')?.value;if(!c){alert('اختر مركز التكلفة المستهدف أولًا.');return}doPrint(assetsList().filter(x=>x.costCenter===c),1)}
@@ -6111,7 +6112,7 @@ body.ap-fast-nav .page.active{animation:none!important}
 </style>
 <script id="ap342CoreIntegrationPatch">
 (()=>{'use strict';
-const VER='3.4.3';
+const VER='3.4.4';
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const norm=v=>String(v??'').trim().toLowerCase().replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ');
 const num=v=>Number.isFinite(Number(v))?Number(v):0;
@@ -6140,6 +6141,12 @@ function exportDetailExcel(){const rows=filteredDetail();exportRowsXlsx(detailTi
 function printDetail(){const w=window.open('','_blank');const rows=document.querySelector('#ap342Detail .table-wrap')?.innerHTML||'';w.document.write(`<html dir="rtl"><meta charset="utf-8"><title>${esc(detailTitle)}</title><style>body{font-family:Arial;padding:18px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #bbb;padding:5px}th{background:#e9f5f3}</style><h2>${esc(detailTitle)}</h2>${rows}</html>`);w.document.close();w.focus();w.print()}
 function activePage(){return document.querySelector('.page.active')}
 function exportActiveExcel(){const p=activePage();if(!p)return;const tables=[...p.querySelectorAll('table')].filter(t=>t.offsetParent!==null);if(!tables.length)return alert('لا يوجد جدول ظاهر في هذه الشاشة للتصدير.');if(!window.XLSX)return alert('مكتبة Excel غير متاحة.');const wb=XLSX.utils.book_new();tables.forEach((t,i)=>{const ws=XLSX.utils.table_to_sheet(t,{raw:true});XLSX.utils.book_append_sheet(wb,ws,('Sheet '+(i+1)).slice(0,31))});XLSX.writeFile(wb,((p.querySelector('.page-title')?.textContent||p.id||'AssetsPro')+'_v'+VER).replace(/[\\/:*?"<>|]/g,'_')+'.xlsx')}
+function printTable(table,title){
+ if(!table)return alert('لا يوجد جدول ظاهر للطباعة.');
+ const heading=title||activePage()?.querySelector('.page-title')?.textContent||'تقرير Assets Pro';
+ const w=window.open('','_blank','width=1200,height=850');if(!w)return alert('اسمح بالنوافذ المنبثقة لإتمام الطباعة.');
+ w.document.write(`<html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>${esc(heading)}</title><style>@page{size:A4 landscape;margin:9mm}body{font-family:Arial,Tahoma;padding:0;color:#111}h1{font-size:20px;border-bottom:2px solid #0f766e;padding-bottom:8px}p{color:#555}table{width:100%;border-collapse:collapse;font-size:10px}th,td{border:1px solid #999;padding:5px;text-align:right}th{background:#e6f4f1}tr{break-inside:avoid}button,input,select{display:none}</style></head><body><h1>${esc(heading)}</h1><p>تاريخ الطباعة: ${new Date().toLocaleString('ar-SA')} — Assets Pro v${VER}</p>${table.outerHTML}<script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script></body></html>`);w.document.close();
+}
 function printActive(){
  const p=activePage();if(!p)return alert('لا توجد شاشة مفتوحة للطباعة.');
  const title=(p.querySelector('.page-title')?.textContent||p.id||'Assets Pro').trim();
@@ -6164,7 +6171,7 @@ function openAsset(n){n=decodeURIComponent(n);const a=A().find(x=>String(x.numbe
 // More deterministic local advisor, grounded only in current data.
 function askAdvisor342(q){q=q||document.getElementById('aiQuestion')?.value?.trim();if(!q)return;const chat=document.getElementById('aiChat');const data=A(),nq=norm(q),group=(field,measure='cost')=>{const m={};data.forEach(a=>{const k=String(a[field]||'غير محدد').trim();m[k]=(m[k]||0)+(measure==='count'?1:num(a[measure]))});return Object.entries(m).sort((a,b)=>b[1]-a[1])};let ans='';
  const total=data.reduce((s,a)=>s+num(a.cost),0),acc=data.reduce((s,a)=>s+num(a.accum),0),monthly=data.reduce((s,a)=>s+num(a.monthly),0);
- if(nq.includes('مركز تكلف')||nq.includes('صيدلي')){const measure=(nq.includes('عدد')||nq.includes('يحتوي')||nq.includes('فيه اصول')||nq.includes('بها اصول'))?'count':nq.includes('مجمع')?'accum':nq.includes('صافي')?'net':nq.includes('اهلاك')?'monthly':'cost';let ranked;if(measure==='net'){const m={};data.forEach(a=>{const k=String(a.costCenter||'غير محدد').trim();m[k]=(m[k]||0)+Math.max(0,num(a.cost)-num(a.accum))});ranked=Object.entries(m).sort((a,b)=>b[1]-a[1])}else ranked=group('costCenter',measure);if(nq.includes('اقل')||nq.includes('ادني'))ranked.reverse();const labels={count:'عدد الأصول',cost:'إجمالي التكلفة',monthly:'الإهلاك الشهري',accum:'مجمع الإهلاك',net:'صافي القيمة الدفترية'},metric=labels[measure];ans=`<strong>${metric} حسب مركز التكلفة</strong><br>`+ranked.slice(0,15).map((r,i)=>`${i+1}. ${esc(r[0])}: ${measure==='count'?r[1]+' أصل':cash(r[1])+' ر.س'}`).join('<br>')}
+ if(nq.includes('مركز تكلف')||nq.includes('مراكز تكلف')||nq.includes('صيدلي')){const measure=(nq.includes('عدد')||nq.includes('يحتوي')||nq.includes('فيه اصول')||nq.includes('بها اصول'))?'count':nq.includes('مجمع')?'accum':nq.includes('صافي')?'net':nq.includes('اهلاك')?'monthly':'cost';let ranked;if(measure==='net'){const m={};data.forEach(a=>{const k=String(a.costCenter||'غير محدد').trim();m[k]=(m[k]||0)+Math.max(0,num(a.cost)-num(a.accum))});ranked=Object.entries(m).sort((a,b)=>b[1]-a[1])}else ranked=group('costCenter',measure);if(nq.includes('اقل')||nq.includes('ادني'))ranked.reverse();const labels={count:'عدد الأصول',cost:'إجمالي التكلفة',monthly:'الإهلاك الشهري',accum:'مجمع الإهلاك',net:'صافي القيمة الدفترية'},metric=labels[measure],requested=Number((nq.match(/\d+/)||[])[0]||1),limit=Math.max(1,Math.min(50,requested));ans=`<strong>${limit===1?'أعلى مركز تكلفة':`أعلى ${limit} مراكز تكلفة`} حسب ${metric}</strong><br>`+ranked.slice(0,limit).map((r,i)=>`${i+1}. ${esc(r[0])}: ${measure==='count'?r[1]+' أصل':cash(r[1])+' ر.س'}`).join('<br>')}
  else if(nq.includes('اهلاك')&&nq.includes('90')){const r=data.filter(a=>num(a.cost)>0&&num(a.accum)/num(a.cost)>=.9).sort((a,b)=>num(b.accum)/num(b.cost)-num(a.accum)/num(a.cost));ans=`<strong>أصول تجاوز إهلاكها 90%</strong><br>العدد: ${r.length}<br>`+r.slice(0,25).map(a=>`${esc(a.number)} — ${esc(a.name)} — ${((num(a.accum)/num(a.cost))*100).toFixed(1)}%`).join('<br>')}
  else if(nq.includes('اعلى')||nq.includes('اغلى')){const r=[...data].sort((a,b)=>num(b.cost)-num(a.cost)).slice(0,10);ans='<strong>أعلى الأصول تكلفة</strong><br>'+r.map((a,i)=>`${i+1}. ${esc(a.number)} — ${esc(a.name)}: ${cash(a.cost)} ر.س`).join('<br>')}
  else if(nq.includes('ملخص')||nq.includes('اجمالي'))ans=`<strong>ملخص مبني على البيانات الحالية</strong><br>عدد الأصول: ${data.length}<br>إجمالي التكلفة: ${cash(total)} ر.س<br>مجمع الإهلاك: ${cash(acc)} ر.س<br>صافي القيمة: ${cash(total-acc)} ر.س<br>الإهلاك الشهري: ${cash(monthly)} ر.س<br>مراكز التكلفة: ${allCC().length}<br>التنبيهات: ${detailedAlerts().length}`;
@@ -6184,7 +6191,8 @@ async function openAttachment(type){const a=A()[Number(document.getElementById('
 function strengthenPrint(){let s=document.getElementById('ap342PrintForce');if(s)return;s=document.createElement('style');s.id='ap342PrintForce';s.textContent='@media print{body.apinv-print-mode> *:not(#apinvPrintArea){display:none!important} body.apinv-print-mode #apinvPrintArea{display:block!important;visibility:visible!important;position:static!important} body.apinv-print-mode #apinvPrintArea *{visibility:visible!important}}';document.head.appendChild(s)}
 function wireKpis(){document.addEventListener('click',e=>{const c=e.target.closest('.mini,.dashboard-kpi,.card');if(!c||c.closest('#ap342Detail'))return;const label=norm(c.querySelector('small')?.textContent||c.querySelector('h3')?.textContent||'');if(!label)return;if(label.includes('مجمع الاهلاك')){e.preventDefault();e.stopPropagation();openDetail('تفاصيل مجمع الإهلاك',A())}else if(label.includes('اجمالي تكلف')||label==='التكلفه'){e.preventDefault();e.stopPropagation();openDetail('تفاصيل إجمالي تكلفة الأصول',A())}else if(label.includes('صافي القيم')){e.preventDefault();e.stopPropagation();openDetail('تفاصيل صافي القيمة الدفترية',A())}else if(label.includes('اهلاك شهري')||label.includes('مجموع الاهلاك الشهري')){e.preventDefault();e.stopPropagation();openDetail('تفاصيل الإهلاك الشهري',A().filter(a=>num(a.monthly)!==0))}},true)}
 function patchExisting(){refreshAllFilters();installPageTools();installBudgetFix();strengthenPrint();enhanceIntel();if(document.getElementById('alerts')?.classList.contains('active'))renderAlerts342();const idx=document.getElementById('assetIntelModal');if(idx&&!idx.classList.contains('hidden'))attachmentStatus()}
-window.AP342={openDetail,renderDetail,exportDetailExcel,printDetail,openAsset,renderAlerts:renderAlerts342,askAdvisor:askAdvisor342,saveAttachments,openAttachment,refreshAllFilters,exportActiveExcel,printActive};
+window.openCostCenterDetails=function(cc){if(!cc)return;const canonical=A().map(a=>a.costCenter).find(x=>norm(x)===norm(cc))||cc;openDashboardDetail('cost');setTimeout(()=>{const sel=document.getElementById('dashboardDetailCC');if(sel){const option=[...sel.options].find(o=>norm(o.value)===norm(canonical));sel.value=option?.value||canonical}renderDashboardDetail();dashboardDetailTitle.textContent='أصول مركز التكلفة — '+canonical},20)};
+window.AP342={openDetail,renderDetail,exportDetailExcel,printDetail,printTable,openAsset,renderAlerts:renderAlerts342,askAdvisor:askAdvisor342,saveAttachments,openAttachment,refreshAllFilters,exportActiveExcel,printActive};
 window.askAdvisor=askAdvisor342;window.renderAlertsPage=renderAlerts342;
 document.addEventListener('click',startInventory342,true);wireKpis();
 document.addEventListener('assetspro:data-changed',()=>setTimeout(patchExisting,50));document.addEventListener('click',e=>{const b=e.target.closest('nav button[data-page]');if(b)setTimeout(patchExisting,80)});
