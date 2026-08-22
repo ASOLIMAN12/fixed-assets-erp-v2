@@ -8,6 +8,8 @@ const PORT = process.env.PORT || 3000;
 const DATA = __dirname;
 const MASTER = path.join(DATA,'Assets_Master_Data.json');
 const INVENTORY = path.join(DATA,'inventory.json');
+const JOURNALS = path.join(DATA,'journals.json');
+const HR_MONTHS = path.join(DATA,'hr_months.json');
 
 app.use(express.json({limit:'25mb'}));
 app.use(express.static(__dirname,{
@@ -37,7 +39,7 @@ function backup(file,prefix){
   files.slice(20).forEach(f=>{try{fs.unlinkSync(path.join(dir,f))}catch(e){}});
 }
 
-app.get('/api/health',(req,res)=>res.json({ok:true,app:'Assets Pro',version:'3.4.2',time:new Date().toISOString()}));
+app.get('/api/health',(req,res)=>res.json({ok:true,app:'Assets Pro',version:'3.4.3',time:new Date().toISOString()}));
 
 app.get('/api/master-data',(req,res)=>{
   res.json(readJSON(MASTER,{schema:'assets-pro-master-data-v1',assets:[]}));
@@ -73,6 +75,51 @@ app.get('/api/backups',(req,res)=>{
   const dir=path.join(DATA,'backups');
   if(!fs.existsSync(dir))return res.json([]);
   res.json(fs.readdirSync(dir).sort().reverse());
+});
+
+app.get('/api/journals',(req,res)=>{
+  res.json(readJSON(JOURNALS,{journals:[],savedAt:''}));
+});
+
+app.post('/api/journals',(req,res)=>{
+  const body=req.body||{};
+  if(!Array.isArray(body.journals))return res.status(400).send('Invalid journals payload');
+  backup(JOURNALS,'journals');
+  const payload={journals:body.journals,savedAt:new Date().toISOString()};
+  writeJSON(JOURNALS,payload);
+  res.json({ok:true,count:payload.journals.length,savedAt:payload.savedAt});
+});
+
+app.post('/api/backup-assets',(req,res)=>{
+  const body=req.body||{};
+  const dir=path.join(DATA,'backups');fs.mkdirSync(dir,{recursive:true});
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+  const name=`assets_manual_${stamp}.json`,target=path.join(dir,name);
+  writeJSON(target,body);
+  res.json({ok:true,savedAt:new Date().toISOString(),relativePath:path.join('backups',name)});
+});
+
+app.post('/api/hr/save-month',(req,res)=>{
+  const body=req.body||{};
+  if(!body.period)return res.status(400).send('Period is required');
+  const data=readJSON(HR_MONTHS,{months:[]});
+  data.months=Array.isArray(data.months)?data.months:[];
+  data.months=data.months.filter(x=>x.period!==body.period);
+  data.months.unshift({...body,savedAt:new Date().toISOString()});
+  data.updatedAt=new Date().toISOString();
+  backup(HR_MONTHS,'hr_months');writeJSON(HR_MONTHS,data);
+  res.json({ok:true,json:'hr_months.json',period:body.period,savedAt:data.updatedAt});
+});
+
+app.post('/api/export-journals',(req,res)=>{
+  const journals=Array.isArray(req.body?.journals)?req.body.journals:[];
+  if(!journals.length)return res.status(400).send('No journals');
+  const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const rows=journals.flatMap(j=>(j.lines||[]).map(x=>`<tr><td>${esc(j.period)}</td><td>${esc(x.costCenter)}</td><td>${esc(x.accountCode)}</td><td>${esc(x.accountName)}</td><td>${esc(x.description)}</td><td>${Number(x.debit||0)}</td><td>${Number(x.credit||0)}</td><td>${esc(j.status)}</td></tr>`)).join('');
+  const html=`<html dir="rtl"><head><meta charset="UTF-8"></head><body><table border="1"><tr><th>الفترة</th><th>مركز التكلفة</th><th>رقم الحساب</th><th>اسم الحساب</th><th>البيان</th><th>مدين</th><th>دائن</th><th>الحالة</th></tr>${rows}</table></body></html>`;
+  res.setHeader('Content-Type','application/vnd.ms-excel; charset=utf-8');
+  res.setHeader('Content-Disposition',"attachment; filename*=UTF-8''AssetsPro_Journals.xls");
+  res.send('\ufeff'+html);
 });
 
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'index.html')));
