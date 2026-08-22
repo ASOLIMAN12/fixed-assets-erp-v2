@@ -207,7 +207,7 @@
     <aside>
       <div class="brand">
         <img id="sideLogo" class="mini-logo" alt="شعار الشركة" style="object-fit:contain;padding:5px" />
-        <div><strong>Assets Pro</strong><br><small>Enterprise v3.5.0</small></div>
+        <div><strong>Assets Pro</strong><br><small>Enterprise v3.5.1</small></div>
       </div>
       <nav class="ap-module-nav-static" id="apModuleSidebar">
 <button type="button" class="active" data-module="home">🏠 الرئيسية</button>
@@ -6126,7 +6126,7 @@ body.ap-fast-nav .page.active{animation:none!important}
 </style>
 <script id="ap342CoreIntegrationPatch">
 (()=>{'use strict';
-const VER='3.5.0';
+const VER='3.5.1';
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const norm=v=>String(v??'').trim().toLowerCase().replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ');
 const num=v=>Number.isFinite(Number(v))?Number(v):0;
@@ -6224,7 +6224,7 @@ setTimeout(patchExisting,2500);
 </style>
 <script id="v345FlexibleAdvisorAndReports">
 (()=>{'use strict';
-const V='3.5.0',q=id=>document.getElementById(id),assets=()=>window.APDataEngine?.getAssets?.()||window.assets||[];
+const V='3.5.1',q=id=>document.getElementById(id),assets=()=>window.APDataEngine?.getAssets?.()||window.assets||[];
 const norm=v=>String(v??'').toLowerCase().replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[ًٌٍَُِّْـ]/g,'').replace(/[^\u0600-\u06ffa-z0-9% ]/g,' ').replace(/\s+/g,' ').trim();
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=v=>Number.isFinite(Number(v))?Number(v):0,cash=v=>num(v).toLocaleString('ar-SA',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -6351,6 +6351,17 @@ function downloadZpl(list){list=(list||selectedAssets()).filter(Boolean);if(!lis
 function enhance(){const tools=document.querySelector('#ap348PrintPreview .ap348-preview-tools');if(!tools||tools.querySelector('.ap350-zebra-btn'))return;const p=document.createElement('div');p.className='ap350-zebra-note';p.innerHTML='<b>إعداد معتمد:</b> Zebra GK420t — دقة 203dpi — ملصق 40×20 مم.';tools.appendChild(p);const direct=document.createElement('button');direct.type='button';direct.className='btn main ap350-zebra-btn';direct.textContent='طباعة Zebra GK420t — 40×20';direct.onclick=()=>printGK(window.AP348?.getPreviewAssets?.()||selectedAssets());tools.appendChild(direct);const zpl=document.createElement('button');zpl.type='button';zpl.className='btn';zpl.textContent='تنزيل ملف ZPL للطابعة';zpl.onclick=()=>downloadZpl(window.AP348?.getPreviewAssets?.()||selectedAssets());tools.appendChild(zpl)}
 document.addEventListener('click',e=>{if(e.target.closest('[onclick*="AP348.preview"],#ap349BarcodeActions,#aplblList'))setTimeout(enhance,50)},true);document.addEventListener('DOMContentLoaded',()=>setTimeout(enhance,2000));
 window.AP350={printGK,downloadZpl,current,selectedAssets};
+})();
+</script>
+<script id="v351AssetMapDetailsFix">
+(()=>{'use strict';
+const assets=()=>{try{const a=window.APDataEngine?.getAssets?.();if(Array.isArray(a))return a}catch(e){}return Array.isArray(window.assets)?window.assets:[]};
+const norm=v=>String(v??'').trim().toLowerCase().replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[ًٌٍَُِّْـ]/g,'').replace(/[\s_\-\/\\]+/g,'');
+function rowsForCenter(cc){const key=norm(cc);return assets().filter(a=>norm(a.costCenter)===key)}
+function openCenter(cc){if(!cc)return;const rows=rowsForCenter(cc),canonical=rows[0]?.costCenter||cc;if(!rows.length)return alert('لم يتم العثور على أصول مرتبطة بمركز التكلفة: '+cc);window.AP342?.openDetail?.('أصول مركز التكلفة — '+canonical,rows)}
+window.openMapLocation=openCenter;
+window.openCostCenterDetails=openCenter;
+window.AP351={openCenter,rowsForCenter};
 })();
 </script>
 </body>
