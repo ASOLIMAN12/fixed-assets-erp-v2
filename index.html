@@ -207,13 +207,12 @@
     <aside>
       <div class="brand">
         <img id="sideLogo" class="mini-logo" alt="شعار الشركة" style="object-fit:contain;padding:5px" />
-        <div><strong>Assets Pro</strong><br><small>Enterprise v3.4.5</small></div>
+        <div><strong>Assets Pro</strong><br><small>Enterprise v3.4.6</small></div>
       </div>
       <nav class="ap-module-nav-static" id="apModuleSidebar">
 <button type="button" class="active" data-module="home">🏠 الرئيسية</button>
 <button type="button" data-module="assetsmod">🏢 الأصول الثابتة</button>
 <button type="button" data-module="finance">💳 المالية والإهلاك</button>
-<button type="button" data-module="hr">👥 الموارد البشرية</button>
 <button type="button" data-module="inventorymod">▥ الجرد والباركود</button>
 <button type="button" data-module="maintenanceMod">🔧 الصيانة والضمان</button>
 <button type="button" data-module="reportsmod">📚 التقارير والتحليلات</button>
@@ -247,15 +246,13 @@
   <span id="apMasterDataState" class="status warn">لم يتم تحميل Master Data بعد</span>
 </div>
 
-      <div style="margin:10px 0;padding:10px 12px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc">
-تم فصل HR Pro عن Assets Pro. <button class="btn" onclick="openHRPro()">فتح HR Pro</button>
-</div>
+      <div style="display:none" aria-hidden="true">تم فصل HR Pro عن Assets Pro.</div>
 <style id="v31AssetsIntegrationCSS">
 #hrLinkBox{margin:10px 0;padding:12px 14px;border:1px solid #dbe5ef;border-radius:14px;background:#fff;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 #hrLinkStatus.ok{color:#166534;font-weight:700}#hrLinkStatus.warn{color:#92400e;font-weight:700}
 </style>
 
-<div id="hrLinkBox">
+<div id="hrLinkBox" style="display:none" aria-hidden="true">
   <button class="btn main" onclick="AssetsHRIntegration.linkHRFolder()">📁 ربط مجلد HR Pro (للفتح)</button>
   <button class="btn" onclick="AssetsHRIntegration.refreshFromFolder()">🔄 قراءة بيانات HR من Data Assets</button>
   <button class="btn" onclick="openHRPro()">فتح HR Pro</button>
@@ -265,7 +262,10 @@
 (()=>{'use strict';
 const KEY='assetsProHRIntegration',HR_HANDLE_KEY='hr-folder';
 function read(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
-function setStatus(t,ok=false){const el=document.getElementById('hrLinkStatus');if(!el)return;el.textContent=t;el.className=ok?'ok':'warn'}
+function setStatus(t,ok=false){
+ const targets=[document.getElementById('hrLinkStatus'),document.getElementById('iccHRStatus')].filter(Boolean);
+ targets.forEach(el=>{el.textContent=t;el.className=ok?'status ok':'status warn'});
+}
 async function linkHRFolder(){try{const h=await FolderBridge.pick(HR_HANDLE_KEY);setStatus('تم ربط مجلد HR Pro لفتح البرنامج: '+h.name,true)}catch(e){if(e?.name!=='AbortError')alert('تعذر ربط مجلد HR Pro.\\n'+e.message)}}
 async function getAssetsFolder(){
  try{
@@ -997,12 +997,18 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 <section id="integratedcost" class="page">
   <h2>التكلفة الشاملة لمراكز التكلفة</h2>
+  <div class="card" style="margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <strong>ملخص تكلفة الموظفين:</strong>
+    <button class="btn main" onclick="AssetsHRIntegration.refreshFromFolder()">تحديث الملخص من HR Pro</button>
+    <button class="btn" onclick="openHRPro()">فتح HR Pro المستقل</button>
+    <span id="iccHRStatus" class="status warn">لم يتم تحميل ملخص HR بعد</span>
+  </div>
   <div class="card" style="margin-bottom:14px">
     <div class="grid" style="grid-template-columns:repeat(5,minmax(150px,1fr));gap:10px">
       <label>من تاريخ<input id="iccFrom" type="date"></label>
       <label>إلى تاريخ<input id="iccTo" type="date"></label>
       <label>مركز التكلفة<select id="iccCenter"><option value="">كل مراكز التكلفة</option></select></label>
-      <label>بحث موظف<input id="iccEmployee" placeholder="اسم أو رقم الموظف"></label>
+      <label>مصدر بيانات الموظفين<input value="ملخص HR Pro فقط" readonly></label>
       <div style="display:flex;align-items:end;gap:8px"><button class="btn primary" onclick="renderIntegratedCostReport()">تحديث التقرير</button><button class="btn" onclick="exportIntegratedCostCSV()">CSV</button></div>
     </div>
     <small style="display:block;margin-top:10px;color:var(--muted)">التكلفة الدورية = تكلفة الموظفين للفترة + إهلاك الأصول للفترة. قيمة شراء الأصل لا تدخل كمصروف موظف.</small>
@@ -1010,7 +1016,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   <div id="iccKpis" class="kpi-grid"></div>
   <div class="card" style="margin-top:14px;overflow:auto">
     <table id="iccTable"><thead><tr>
-      <th>مركز التكلفة</th><th>الموظفون</th><th>الراتب الأساسي</th><th>بدل السكن</th><th>النقل</th><th>بدلات أخرى</th><th>التأمينات الاجتماعية</th><th>التأمين الطبي</th><th>مخصص الإجازة</th><th>مخصص نهاية الخدمة</th><th>إجمالي تكلفة الموظفين</th><th>عدد الأصول</th><th>إهلاك الأصول للفترة</th><th>إجمالي تكلفة المركز</th><th>التفاصيل</th>
+      <th>مركز التكلفة</th><th>عدد الموظفين</th><th>تكلفة الموظفين الشهرية</th><th>تكلفة الموظفين للفترة</th><th>عدد الأصول</th><th>إهلاك الأصول للفترة</th><th>إجمالي تكلفة المركز</th><th>التفاصيل</th>
     </tr></thead><tbody></tbody></table>
   </div>
   <div id="iccDetails" class="card" style="display:none;margin-top:14px"></div>
@@ -3668,7 +3674,7 @@ function printCustody(id){const e=employeeById(id);if(!e)return;const aa=employe
 function printMovement(id){const r=custodyRecords.find(x=>x.id===id);if(!r)return;printHtml('محضر حركة عهدة',`<div class="meta"><b>رقم الحركة:</b> ${esc(r.id)}<br><b>التاريخ:</b> ${esc(r.date)}<br><b>الأصل:</b> ${esc(r.assetNumber)} — ${esc(r.assetName)}<br><b>من:</b> ${esc(r.fromEmployeeName||'المنشأة')}<br><b>إلى:</b> ${esc(r.toEmployeeName||'المنشأة')}<br><b>حالة الأصل:</b> ${esc(r.condition)}<br><b>رقم المحضر:</b> ${esc(r.documentNo)}<br><b>الملاحظات:</b> ${esc(r.notes)}</div><div class="sign"><span>المسلّم: ....................</span><span>المستلم: ....................</span><span>مسؤول الأصول: ....................</span></div>`)}
 function printClearance(){const id=prompt('أدخل رقم الموظف لإصدار نموذج إخلاء الطرف:');if(!id)return;const e=employeeById(id);if(!e){alert('الموظف غير موجود.');return}const aa=employeeAssets(id);printHtml('نموذج إخلاء طرف من العُهد',`<div class="meta"><b>رقم الموظف:</b> ${esc(e.employeeId)}<br><b>اسم الموظف:</b> ${esc(e.name)}<br><b>الفرع:</b> ${esc(e.branch)}<br><b>عدد العهد القائمة:</b> ${aa.length}</div><table><thead><tr><th>رقم الأصل</th><th>اسم الأصل</th><th>الحالة</th><th>تم الاستلام</th><th>ملاحظات</th></tr></thead><tbody>${aa.length?aa.map(a=>`<tr><td>${esc(a.number)}</td><td>${esc(a.name)}</td><td>${esc(a.custodyCondition||a.status)}</td><td>□ نعم &nbsp; □ لا</td><td></td></tr>`).join(''):'<tr><td colspan="5">لا توجد عهد قائمة على الموظف.</td></tr>'}</tbody></table><div class="sign"><span>الموظف: ....................</span><span>الموارد البشرية: ....................</span><span>مسؤول الأصول: ....................</span></div>`)}
 function onNav(id){if(id==='employeesDirectory')renderEmployees();if(id==='custody')renderCustody()}
-function boot(){if(window.__v210Booted)return;window.__v210Booted=true;build();document.addEventListener('click',e=>{const b=e.target.closest('nav button[data-page]');if(b)setTimeout(()=>onNav(b.dataset.page),20)});document.addEventListener('assetspro:data-changed',()=>setTimeout(()=>{const id=document.querySelector('.page.active')?.id;if(id==='employeesDirectory'){refreshCustodySelects();renderEmployees()}else if(id==='custody'){refreshCustodySelects();renderCustody()}},40));setTimeout(autoLoad,1600);const versionNodes=[...document.querySelectorAll('*')].filter(x=>x.children.length===0&&/v1\.9\.5/.test(x.textContent||''));versionNodes.forEach(x=>x.textContent=x.textContent.replace(/v1\.9\.5/g,'v2.2.0'))}
+function boot(){window.__v210Booted=true;/* Employee and custody administration belongs to standalone HR Pro. */}
 window.v210RenderEmployees=renderEmployees;window.v210RenderCustody=renderCustody;window.v210ImportEmployees=importEmployees;window.v210ExportEmployees=exportEmployees;window.v210OpenEmployee=openEmployee;window.v210CloseEmployee=closeEmployee;window.v210SaveEmployee=saveEmployee;window.v210EmployeeDetails=employeeDetails;window.v210OpenCustody=openCustody;window.v210CloseCustody=closeCustody;window.v210AssetChanged=assetChanged;window.v210SaveCustody=saveCustody;window.v210PrintCustody=printCustody;window.v210PrintMovement=printMovement;window.v210PrintClearance=printClearance;
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
@@ -6112,7 +6118,7 @@ body.ap-fast-nav .page.active{animation:none!important}
 </style>
 <script id="ap342CoreIntegrationPatch">
 (()=>{'use strict';
-const VER='3.4.5';
+const VER='3.4.6';
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const norm=v=>String(v??'').trim().toLowerCase().replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ');
 const num=v=>Number.isFinite(Number(v))?Number(v):0;
@@ -6210,7 +6216,7 @@ setTimeout(patchExisting,2500);
 </style>
 <script id="v345FlexibleAdvisorAndReports">
 (()=>{'use strict';
-const V='3.4.5',q=id=>document.getElementById(id),assets=()=>window.APDataEngine?.getAssets?.()||window.assets||[];
+const V='3.4.6',q=id=>document.getElementById(id),assets=()=>window.APDataEngine?.getAssets?.()||window.assets||[];
 const norm=v=>String(v??'').toLowerCase().replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[ًٌٍَُِّْـ]/g,'').replace(/[^\u0600-\u06ffa-z0-9% ]/g,' ').replace(/\s+/g,' ').trim();
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=v=>Number.isFinite(Number(v))?Number(v):0,cash=v=>num(v).toLocaleString('ar-SA',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -6235,6 +6241,36 @@ const oldData=window.professionalReportData;window.professionalReportData=functi
 const oldRender=window.renderProfessionalReport;window.renderProfessionalReport=function(){enhanceReports();if(oldRender)oldRender();const d=window.professionalReportData(),src=d.source||reportBase(),cost=src.reduce((s,a)=>s+num(a.cost),0),acc=src.reduce((s,a)=>s+num(a.accum),0),mon=src.reduce((s,a)=>s+num(a.monthly),0);if(q('proReportSummary'))q('proReportSummary').innerHTML=`<div class="mini"><small>التقرير</small><strong>${esc(d.title)}</strong></div><div class="mini"><small>السجلات</small><strong>${d.rows.length}</strong></div><div class="mini"><small>التكلفة</small><strong>${cash(cost)}</strong></div><div class="mini"><small>المجمع</small><strong>${cash(acc)}</strong></div><div class="mini"><small>الصافي</small><strong>${cash(cost-acc)}</strong></div><div class="mini"><small>الإهلاك الشهري</small><strong>${cash(mon)}</strong></div>`};
 window.printProfessionalReport=function(){const d=window.professionalReportData();window.AP342?.printTable?.(q('proReportTable'),d.title)};
 document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{enhanceReports();window.renderProfessionalReport?.()},1500));document.addEventListener('assetspro:data-changed',()=>setTimeout(()=>{enhanceReports();window.renderProfessionalReport?.()},80));
+})();
+</script>
+<script id="v346SeparatedHRAndIntegratedCost">
+(()=>{'use strict';
+const n=v=>Number(v)||0,fmt=v=>n(v).toLocaleString('ar-SA',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm=v=>String(v??'').trim().toLowerCase().replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[\s_\-\/\\]+/g,'');
+const monthCount=(a,b)=>{const s=new Date(a),e=new Date(b);return isNaN(s)||isNaN(e)||e<s?0:(e.getFullYear()-s.getFullYear())*12+e.getMonth()-s.getMonth()+1};
+function assets(){try{return window.APDataEngine?.getAssets?.()||[]}catch(e){return []}}
+function summary(){return window.AssetsHRIntegration?.read?.()||null}
+function hrCenters(){const d=summary();return Array.isArray(d?.costCenters)?d.costCenters:[]}
+function centerName(x){return String(x?.costCenter||x?.center||x?.name||'غير محدد').trim()||'غير محدد'}
+function build(){
+ const from=document.getElementById('iccFrom')?.value||`${new Date().getFullYear()}-01-01`,to=document.getElementById('iccTo')?.value||`${new Date().getFullYear()}-12-31`,months=monthCount(from,to)||1,filter=document.getElementById('iccCenter')?.value||'';
+ const map=new Map(),get=name=>{name=String(name||'غير محدد').trim()||'غير محدد';const key=norm(name);if(!map.has(key))map.set(key,{center:name,employeeCount:0,employeeMonthly:0,employeePeriod:0,assets:[],depr:0,total:0});return map.get(key)};
+ hrCenters().forEach(c=>{const r=get(centerName(c));r.employeeCount+=n(c.employees??c.employeeCount);r.employeeMonthly+=n(c.monthlyEmployeeCost??c.monthlyTotal??c.total)});
+ assets().forEach(a=>{const r=get(a.costCenter);r.assets.push(a);r.depr+=n(a.monthly)*months});
+ let rows=[...map.values()];rows.forEach(r=>{r.employeePeriod=r.employeeMonthly*months;r.total=r.employeePeriod+r.depr});rows=rows.filter(r=>!filter||norm(r.center)===norm(filter)).sort((a,b)=>b.total-a.total);
+ return {rows,p:{from,to,months}};
+}
+function fillCenters(rows){const el=document.getElementById('iccCenter');if(!el)return;const old=el.value,names=rows.map(r=>r.center).sort((a,b)=>a.localeCompare(b,'ar'));el.innerHTML='<option value="">كل مراكز التكلفة</option>'+names.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');if(names.some(x=>norm(x)===norm(old)))el.value=names.find(x=>norm(x)===norm(old))}
+window.renderIntegratedCostReport=function(){
+ const data=build(),body=document.querySelector('#iccTable tbody');if(!body)return;fillCenters(data.rows);const z=data.rows.reduce((s,r)=>({emp:s.emp+r.employeePeriod,dep:s.dep+r.depr,total:s.total+r.total,ec:s.ec+r.employeeCount,ac:s.ac+r.assets.length}),{emp:0,dep:0,total:0,ec:0,ac:0});
+ const k=document.getElementById('iccKpis');if(k)k.innerHTML=`<div class="card"><small>إجمالي تكلفة الفترة</small><h3>${fmt(z.total)} ر.س</h3></div><div class="card"><small>تكلفة الموظفين من الملخص</small><h3>${fmt(z.emp)} ر.س</h3></div><div class="card"><small>إهلاك الأصول</small><h3>${fmt(z.dep)} ر.س</h3></div><div class="card"><small>الموظفون / الأصول</small><h3>${z.ec} / ${z.ac}</h3></div>`;
+ body.innerHTML=data.rows.map((r,i)=>`<tr><td>${esc(r.center)}</td><td>${r.employeeCount}</td><td>${fmt(r.employeeMonthly)}</td><td>${fmt(r.employeePeriod)}</td><td>${r.assets.length}</td><td>${fmt(r.depr)}</td><td><b>${fmt(r.total)}</b></td><td><button class="btn" onclick="showIntegratedCostDetails(${i})">عرض الأصول</button></td></tr>`).join('')||'<tr><td colspan="8">لا توجد بيانات مطابقة.</td></tr>';
+ const d=summary(),st=document.getElementById('iccHRStatus');if(st){const ok=!!d&&hrCenters().length>0;st.textContent=ok?`تم تحميل ملخص HR — ${n(d.employeeCount)} موظف — ${hrCenters().length} مركز تكلفة`:'لا يوجد ملخص HR؛ يعرض التقرير إهلاك الأصول فقط';st.className=ok?'status ok':'status warn'}window.__icc=data;
+};
+window.showIntegratedCostDetails=function(i){const r=window.__icc?.rows?.[i],box=document.getElementById('iccDetails');if(!r||!box)return;box.style.display='block';box.innerHTML=`<h3>تفاصيل أصول ${esc(r.center)}</h3><p class="note">بيانات الموظفين التفصيلية محفوظة داخل HR Pro فقط. يعرض Assets Pro الملخص المالي المعتمد.</p><table class="icc-mini"><thead><tr><th>رقم الأصل</th><th>الأصل</th><th>التكلفة</th><th>الإهلاك الشهري</th></tr></thead><tbody>${r.assets.map(a=>`<tr><td>${esc(a.number)}</td><td>${esc(a.name)}</td><td>${fmt(a.cost)}</td><td>${fmt(a.monthly)}</td></tr>`).join('')||'<tr><td colspan="4">لا توجد أصول</td></tr>'}</tbody></table>`;box.scrollIntoView({behavior:'smooth',block:'start'})};
+window.exportIntegratedCostCSV=function(){if(!window.__icc)window.renderIntegratedCostReport();const rows=window.__icc?.rows||[],csv='\uFEFFمركز التكلفة,عدد الموظفين,تكلفة الموظفين الشهرية,تكلفة الموظفين للفترة,عدد الأصول,إهلاك الأصول,إجمالي التكلفة\n'+rows.map(r=>[`"${String(r.center).replace(/"/g,'""')}"`,r.employeeCount,r.employeeMonthly,r.employeePeriod,r.assets.length,r.depr,r.total].join(',')).join('\n'),b=new Blob([csv],{type:'text/csv;charset=utf-8'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='Integrated_Cost_Summary.csv';a.click();URL.revokeObjectURL(u)};
+document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{document.querySelectorAll('[data-module="hr"],[data-page="employeesDirectory"],[data-page="custody"]').forEach(x=>x.remove());window.renderIntegratedCostReport?.()},1800));
 })();
 </script>
 </body>
