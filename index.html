@@ -207,7 +207,7 @@
     <aside>
       <div class="brand">
         <img id="sideLogo" class="mini-logo" alt="شعار الشركة" style="object-fit:contain;padding:5px" />
-        <div><strong>Assets Pro</strong><br><small>Enterprise v3.5.1</small></div>
+        <div><strong>Assets Pro</strong><br><small>Enterprise v3.5.2</small></div>
       </div>
       <nav class="ap-module-nav-static" id="apModuleSidebar">
 <button type="button" class="active" data-module="home">🏠 الرئيسية</button>
@@ -5771,7 +5771,7 @@ window.renderInventoryBarcode=render;
 
 <script id="v331MobileInventoryScanner">
 (()=>{'use strict';
-let stream=null, detector=null, running=false, facing='environment', raf=0, lastCode='', lastAt=0, torchOn=false;
+let stream=null, detector=null, running=false, facing='environment', raf=0, lastCode='', lastAt=0, torchOn=false, fallbackCanvas=null, lastFallbackAt=0;
 
 function el(id){return document.getElementById(id)}
 function support(){
@@ -5793,6 +5793,10 @@ async function formats(){
  }catch(e){}
  return ['code_39','code_128','qr_code','ean_13','ean_8','upc_a','upc_e'];
 }
+function loadJsQR(){
+ if(window.jsQR)return Promise.resolve(true);
+ return new Promise(resolve=>{let s=document.getElementById('apJsQR');if(s){s.addEventListener('load',()=>resolve(!!window.jsQR),{once:true});s.addEventListener('error',()=>resolve(false),{once:true});return}s=document.createElement('script');s.id='apJsQR';s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';s.onload=()=>resolve(true);s.onerror=()=>resolve(false);document.head.appendChild(s)});
+}
 async function start(){
  const sup=support();
  if(!sup.secure){alert('لتشغيل كاميرا الهاتف افتح البرنامج عبر HTTPS أو localhost. فتح ملف HTML مباشرةً قد يمنع الكاميرا.');return false}
@@ -5810,7 +5814,10 @@ async function start(){
     scanLoop();
   }else{
     detector=null;
-    el('mobileScannerHint').textContent='المتصفح لا يدعم القراءة التلقائية — استخدم الإدخال اليدوي';
+    el('mobileScannerHint').textContent='جارٍ تشغيل قارئ QR المتوافق مع iPhone...';
+    const ok=await loadJsQR();
+    if(ok){el('mobileScannerHint').textContent='قارئ iPhone جاهز — قرّب رمز QR داخل الإطار';scanFallbackLoop()}
+    else el('mobileScannerHint').textContent='تعذر تحميل قارئ QR — تحقق من الإنترنت أو استخدم الإدخال اليدوي';
   }
   return true;
  }catch(err){
@@ -5842,7 +5849,23 @@ async function scanLoop(){
  }catch(e){}
  if(running)raf=requestAnimationFrame(scanLoop);
 }
+function scanFallbackLoop(){
+ if(!running||detector)return;
+ const v=el('mobileScannerVideo'),now=Date.now();
+ try{
+  if(window.jsQR&&v?.readyState>=2&&now-lastFallbackAt>180){
+   lastFallbackAt=now;fallbackCanvas=fallbackCanvas||document.createElement('canvas');
+   const max=720,scale=Math.min(1,max/(v.videoWidth||max)),w=Math.max(1,Math.round((v.videoWidth||640)*scale)),h=Math.max(1,Math.round((v.videoHeight||480)*scale));
+   fallbackCanvas.width=w;fallbackCanvas.height=h;const ctx=fallbackCanvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(v,0,0,w,h);
+   const img=ctx.getImageData(0,0,w,h),found=window.jsQR(img.data,w,h,{inversionAttempts:'attemptBoth'});
+   if(found?.data){const raw=String(found.data).trim();if(raw&&(raw!==lastCode||now-lastAt>2500)){lastCode=raw;lastAt=now;handleCode(raw,'QR — iPhone/Safari')}}
+  }
+ }catch(e){}
+ if(running)raf=requestAnimationFrame(scanFallbackLoop);
+}
 function handleCode(code,format='camera'){
+ code=String(code||'').trim();
+ try{const u=new URL(code,location.href),fromHash=new URLSearchParams(String(u.hash||'').replace(/^#/,''));code=fromHash.get('asset')||u.searchParams.get('asset')||u.searchParams.get('id')||code}catch(e){const m=code.match(/(?:#|[?&])asset=([^&]+)/i);if(m)code=decodeURIComponent(m[1])}
  const lc=el('mobileLastCode');if(lc)lc.value=code;
  const method=el('mobileScanMethod');if(method)method.value='Camera — '+format;
  const input=el('invScanInput');if(input){input.value=code;input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}))}
@@ -6126,7 +6149,7 @@ body.ap-fast-nav .page.active{animation:none!important}
 </style>
 <script id="ap342CoreIntegrationPatch">
 (()=>{'use strict';
-const VER='3.5.1';
+const VER='3.5.2';
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const norm=v=>String(v??'').trim().toLowerCase().replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ');
 const num=v=>Number.isFinite(Number(v))?Number(v):0;
@@ -6224,7 +6247,7 @@ setTimeout(patchExisting,2500);
 </style>
 <script id="v345FlexibleAdvisorAndReports">
 (()=>{'use strict';
-const V='3.5.1',q=id=>document.getElementById(id),assets=()=>window.APDataEngine?.getAssets?.()||window.assets||[];
+const V='3.5.2',q=id=>document.getElementById(id),assets=()=>window.APDataEngine?.getAssets?.()||window.assets||[];
 const norm=v=>String(v??'').toLowerCase().replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[ًٌٍَُِّْـ]/g,'').replace(/[^\u0600-\u06ffa-z0-9% ]/g,' ').replace(/\s+/g,' ').trim();
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=v=>Number.isFinite(Number(v))?Number(v):0,cash=v=>num(v).toLocaleString('ar-SA',{minimumFractionDigits:2,maximumFractionDigits:2});
