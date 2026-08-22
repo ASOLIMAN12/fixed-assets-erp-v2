@@ -39,7 +39,7 @@ function backup(file,prefix){
   files.slice(20).forEach(f=>{try{fs.unlinkSync(path.join(dir,f))}catch(e){}});
 }
 
-app.get('/api/health',(req,res)=>res.json({ok:true,app:'Assets Pro',version:'3.4.6',time:new Date().toISOString()}));
+app.get('/api/health',(req,res)=>res.json({ok:true,app:'Assets Pro',version:'3.4.7',time:new Date().toISOString()}));
 
 app.get('/api/master-data',(req,res)=>{
   res.json(readJSON(MASTER,{schema:'assets-pro-master-data-v1',assets:[]}));
