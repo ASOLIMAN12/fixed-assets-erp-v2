@@ -207,7 +207,7 @@
     <aside>
       <div class="brand">
         <img id="sideLogo" class="mini-logo" alt="شعار الشركة" style="object-fit:contain;padding:5px" />
-        <div><strong>Assets Pro</strong><br><small>Enterprise v3.4.9</small></div>
+        <div><strong>Assets Pro</strong><br><small>Enterprise v3.5.0</small></div>
       </div>
       <nav class="ap-module-nav-static" id="apModuleSidebar">
 <button type="button" class="active" data-module="home">🏠 الرئيسية</button>
@@ -6126,7 +6126,7 @@ body.ap-fast-nav .page.active{animation:none!important}
 </style>
 <script id="ap342CoreIntegrationPatch">
 (()=>{'use strict';
-const VER='3.4.9';
+const VER='3.5.0';
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const norm=v=>String(v??'').trim().toLowerCase().replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ');
 const num=v=>Number.isFinite(Number(v))?Number(v):0;
@@ -6224,7 +6224,7 @@ setTimeout(patchExisting,2500);
 </style>
 <script id="v345FlexibleAdvisorAndReports">
 (()=>{'use strict';
-const V='3.4.9',q=id=>document.getElementById(id),assets=()=>window.APDataEngine?.getAssets?.()||window.assets||[];
+const V='3.5.0',q=id=>document.getElementById(id),assets=()=>window.APDataEngine?.getAssets?.()||window.assets||[];
 const norm=v=>String(v??'').toLowerCase().replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[ًٌٍَُِّْـ]/g,'').replace(/[^\u0600-\u06ffa-z0-9% ]/g,' ').replace(/\s+/g,' ').trim();
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=v=>Number.isFinite(Number(v))?Number(v):0,cash=v=>num(v).toLocaleString('ar-SA',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -6312,7 +6312,7 @@ async function deleteFile(type){const a=A()[Number(document.getElementById('asse
 const oldOpen=window.openAsset360;if(typeof oldOpen==='function'){window.openAsset360=function(){const r=oldOpen.apply(this,arguments);setTimeout(ensureAttachmentTab,20);return r}}
 document.addEventListener('click',interceptLabels,true);document.addEventListener('click',e=>{const b=e.target.closest('.ap342-tools button.main');if(!b||b.closest('#ap348PrintPreview'))return;const p=document.querySelector('.page.active'),t=[...p?.querySelectorAll('table')||[]].find(x=>x.offsetParent!==null);if(t){e.preventDefault();e.stopImmediatePropagation();reportPreview(t,p.querySelector('.page-title')?.textContent||p.id)}},true);
 if(window.AP342)window.AP342.printTable=reportPreview;if(window.APInventory)window.APInventory.printOne=n=>preview([A().find(a=>String(a.number)===String(n))]);
-window.AP348={preview,closePreview,printPreview,renderAttachmentsTab,saveFile,openFile,deleteFile,reportPreview};
+window.AP348={preview,closePreview,printPreview,renderAttachmentsTab,saveFile,openFile,deleteFile,reportPreview,getPreviewAssets:()=>previewAssets.slice()};
 document.addEventListener('DOMContentLoaded',()=>setTimeout(ensureAttachmentTab,1800));
 })();
 </script>
@@ -6330,6 +6330,27 @@ function restoreKpi(e){const el=e.target.closest('[onclick*="openDashboardDetail
 function hideWrongTools(){document.querySelectorAll('#labels>.ap342-tools,#inventorybarcode>.ap342-tools').forEach(x=>x.remove())}
 document.addEventListener('click',rowAction,true);document.addEventListener('click',restoreKpi,true);document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{addButtons();hideWrongTools()},1900));document.addEventListener('click',e=>{const b=e.target.closest('[data-module="inventorymod"],nav button');if(b)setTimeout(()=>{addButtons();hideWrongTools()},150)},true);document.addEventListener('assetspro:data-changed',()=>setTimeout(addButtons,80));
 window.AP349={previewCurrent,addButtons};
+})();
+</script>
+<style id="v350ZebraGK420tStyles">
+.ap350-zebra-note{background:#ecfdf5;border:1px solid #86efac;color:#14532d;border-radius:10px;padding:9px 12px;width:100%;font-size:12px}.ap350-zebra-btn{background:#111827!important;color:#fff!important}
+</style>
+<script id="v350ZebraGK420t40x20">
+(()=>{'use strict';
+const A=()=>window.APDataEngine?.getAssets?.()||window.assets||[];
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cleanZpl=v=>String(v??'').replace(/[\^~]/g,' ').replace(/[\r\n]+/g,' ').trim();
+function current(){const n=document.getElementById('aplblAsset')?.value||document.querySelector('#aplblList tbody input:checked')?.closest('tr')?.cells?.[1]?.textContent?.trim();return A().find(a=>String(a.number)===String(n))}
+function selectedAssets(){const checked=[...document.querySelectorAll('#aplblList tbody input[type="checkbox"]:checked')].map(x=>x.closest('tr')?.cells?.[1]?.textContent?.trim());const nums=checked.length?checked:[current()?.number];return nums.map(n=>A().find(a=>String(a.number)===String(n))).filter(Boolean)}
+function qrUrl(a){return location.href.split('#')[0]+'#asset='+encodeURIComponent(a.number)}
+function barcodeId(a){return 'bc_'+String(a.number).replace(/[^A-Za-z0-9_-]/g,'_')}
+function printableLabel(a){return `<section class="zlabel"><div class="top"><b>أصل رقم ${esc(a.number)}</b><span>Assets Pro</span></div><div class="name">${esc(a.name||'')}</div><div class="code"><div id="${barcodeId(a)}"></div><img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrUrl(a))}"></div><small>${esc(a.costCenter||'')} ${a.assignedEmployee?'— '+esc(a.assignedEmployee):''}</small></section>`}
+function printGK(list){list=(list||selectedAssets()).filter(Boolean);if(!list.length)return alert('اختر أصلًا واحدًا على الأقل.');const w=window.open('','_blank','width=760,height=520');if(!w)return alert('اسمح بالنوافذ المنبثقة لإظهار معاينة Zebra.');w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>Zebra GK420t — 40x20 mm</title><style>@page{size:40mm 20mm;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;font-family:Arial,Tahoma,sans-serif}.tools{direction:rtl;padding:10px;background:#e5e7eb;position:sticky;top:0;z-index:5}.tools button{padding:8px 14px}.zlabel{direction:rtl;width:40mm;height:20mm;padding:1.1mm 1.4mm;overflow:hidden;page-break-after:always;color:#000;background:#fff}.top{display:flex;justify-content:space-between;font-size:8pt;line-height:1}.name{height:3.5mm;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-align:center;font-weight:700;font-size:7pt;margin-top:.5mm}.code{height:8mm;display:flex;align-items:center;justify-content:space-around;direction:ltr}.code svg{width:26mm!important;height:7mm!important}.code img{width:7mm;height:7mm}.zlabel small{display:block;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:5.5pt}@media print{.tools{display:none}.zlabel:last-child{page-break-after:auto}}</style><script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script></head><body><div class="tools"><b>Zebra GK420t — ملصق 40×20 مم</b> <button onclick="window.print()">طباعة الآن</button><span> اختر Zebra GK420t، الهوامش: بلا، المقياس: 100%</span></div>${list.map(printableLabel).join('')}<script>window.onload=()=>{${list.map(a=>`try{JsBarcode('#${barcodeId(a)}','${String(a.number).replace(/['\\]/g,'')}',{format:'CODE128',displayValue:true,fontSize:9,margin:0,height:28})}catch(e){}`).join(';')}}<\/script></body></html>`);w.document.close();w.focus()}
+function oneZpl(a){const no=cleanZpl(a.number),name=cleanZpl(a.name).replace(/[^\x20-\x7E]/g,'').slice(0,28)||'FIXED ASSET',url=cleanZpl(qrUrl(a));return `^XA\n^PW320\n^LL160\n^LH0,0\n^CI28\n^FO12,8^A0N,22,20^FDASSET ${no}^FS\n^FO12,34^A0N,17,15^FD${name}^FS\n^FO12,57^BY1,2,48^BCN,48,Y,N,N^FD${no}^FS\n^FO245,54^BQN,2,3^FDLA,${url}^FS\n^FO12,142^A0N,12,10^FDASSETS PRO^FS\n^PQ1,0,1,Y\n^XZ`}
+function downloadZpl(list){list=(list||selectedAssets()).filter(Boolean);if(!list.length)return alert('اختر أصلًا واحدًا على الأقل.');const copies=Math.max(1,Math.min(20,Number(document.getElementById('ap348Copies')?.value)||1)),parts=[];list.forEach(a=>{for(let i=0;i<copies;i++)parts.push(oneZpl(a))});const b=new Blob([parts.join('\n')],{type:'application/octet-stream'}),u=URL.createObjectURL(b),x=document.createElement('a');x.href=u;x.download=`AssetsPro_GK420t_40x20_${new Date().toISOString().slice(0,10)}.zpl`;x.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
+function enhance(){const tools=document.querySelector('#ap348PrintPreview .ap348-preview-tools');if(!tools||tools.querySelector('.ap350-zebra-btn'))return;const p=document.createElement('div');p.className='ap350-zebra-note';p.innerHTML='<b>إعداد معتمد:</b> Zebra GK420t — دقة 203dpi — ملصق 40×20 مم.';tools.appendChild(p);const direct=document.createElement('button');direct.type='button';direct.className='btn main ap350-zebra-btn';direct.textContent='طباعة Zebra GK420t — 40×20';direct.onclick=()=>printGK(window.AP348?.getPreviewAssets?.()||selectedAssets());tools.appendChild(direct);const zpl=document.createElement('button');zpl.type='button';zpl.className='btn';zpl.textContent='تنزيل ملف ZPL للطابعة';zpl.onclick=()=>downloadZpl(window.AP348?.getPreviewAssets?.()||selectedAssets());tools.appendChild(zpl)}
+document.addEventListener('click',e=>{if(e.target.closest('[onclick*="AP348.preview"],#ap349BarcodeActions,#aplblList'))setTimeout(enhance,50)},true);document.addEventListener('DOMContentLoaded',()=>setTimeout(enhance,2000));
+window.AP350={printGK,downloadZpl,current,selectedAssets};
 })();
 </script>
 </body>

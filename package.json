@@ -1,6 +1,6 @@
 {
   "name": "assets-pro-server",
-  "version": "3.4.9",
+  "version": "3.5.0",
   "private": true,
   "description": "Assets Pro HTTPS-ready central server",
   "main": "server.js",
