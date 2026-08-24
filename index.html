@@ -212,7 +212,7 @@
     <aside>
       <div class="brand">
         <img id="sideLogo" class="mini-logo" alt="شعار الشركة" style="object-fit:contain;padding:5px" />
-        <div><strong>Assets Pro</strong><br><small>Enterprise v3.5.8</small></div>
+        <div><strong>Assets Pro</strong><br><small>Enterprise v3.5.9</small></div>
       </div>
       <nav class="ap-module-nav-static" id="apModuleSidebar">
 <button type="button" class="active" data-module="home">🏠 الرئيسية</button>
@@ -928,6 +928,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
           </p>
           <div class="backup-actions">
             <button class="btn btn-primary" style="width:auto;margin:0" onclick="exportBackup()">تصدير نسخة احتياطية</button>
+            <button class="btn" style="background:var(--panel);border:1px solid var(--border);color:var(--text)" onclick="APSingleFileStorage.connect()">📁 تحديد مكان حفظ النسخة</button>
             <label class="btn" style="background:var(--panel);border:1px solid var(--border);color:var(--text);cursor:pointer">
               استيراد نسخة احتياطية
               <input id="backupInput" type="file" accept=".json,application/json" hidden onchange="importBackup(event)">
@@ -938,6 +939,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
             <div class="mini"><small>آخر تصدير</small><strong id="lastBackupDate" style="display:block;margin-top:7px">لم يتم</strong></div>
             <div class="mini"><small>عدد الفروع</small><strong id="backupBranchCount" style="display:block;margin-top:7px">0</strong></div>
             <div class="mini"><small>نوع النسخة</small><strong style="display:block;margin-top:7px">JSON كامل</strong></div>
+            <div class="mini"><small>مكان الحفظ على الجهاز</small><strong id="backupSaveLocation" style="display:block;margin-top:7px">لم يتم تحديد المجلد</strong></div>
           </div>
           <div class="note">
             تشمل الأصول والإهلاك والقيود والجرد والإعدادات والمستخدمين. كلمات المرور لا تُحفظ كنص مكشوف، بينما تحتاج مرفقات الملفات إلى نسخ مجلد البرنامج المرتبط أيضًا.
@@ -4417,20 +4419,20 @@ document.addEventListener('click',e=>{if(e.target?.closest?.('#assetMainToolbar'
 (()=>{'use strict';
 const VERSION='3.0',DB='AssetsProSingleFileDB',STORE='handles',KEY='programFolder';
 let dirHandle=null;
-function state(text,kind=''){const e=document.getElementById('apStorageState');if(!e)return;e.textContent=text;e.className='status '+kind}
+function backupPath(){return dirHandle?dirHandle.name+'\\Data\\Backups\\Complete':'لم يتم تحديد المجلد'}
+function state(text,kind=''){const e=document.getElementById('apStorageState');if(e){e.textContent=text;e.className='status '+kind}const b=document.getElementById('backupSaveLocation');if(b)b.textContent=backupPath()}
 function idb(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(STORE))r.result.createObjectStore(STORE)};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
 async function dbGet(){try{const db=await idb();return await new Promise((res,rej)=>{const tx=db.transaction(STORE,'readonly'),rq=tx.objectStore(STORE).get(KEY);rq.onsuccess=()=>res(rq.result||null);rq.onerror=()=>rej(rq.error)})}catch(e){return null}}
 async function dbSet(h){try{const db=await idb();await new Promise((res,rej)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(h,KEY);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})}catch(e){console.warn(e)}}
 async function dbDel(){try{const db=await idb();await new Promise((res,rej)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).delete(KEY);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})}catch(e){}}
 async function perm(h,write=true){if(!h)return false;const opts={mode:write?'readwrite':'read'};try{let p=await h.queryPermission(opts);if(p==='granted')return true;p=await h.requestPermission(opts);return p==='granted'}catch(e){return false}}
 async function connect(){
- if(location.protocol!=='file:'){state('وضع الخادم المركزي مفعل — لا حاجة لربط مجلد محلي','ok');return false}
  if(!('showDirectoryPicker' in window)){state('هذا المتصفح لا يدعم الحفظ المباشر للمجلد — سيتم استخدام التنزيل كبديل','warn');alert('استخدم أحدث Chrome أو Edge للاستفادة من الحفظ المباشر داخل مجلد البرنامج.');return false}
  try{dirHandle=await window.showDirectoryPicker({mode:'readwrite'});if(!(await perm(dirHandle,true)))throw new Error('لم يتم منح صلاحية الكتابة');await dbSet(dirHandle);state('مجلد البرنامج متصل: '+dirHandle.name,'ok');return true}
  catch(e){if(e?.name!=='AbortError'){state('تعذر ربط مجلد البرنامج: '+e.message,'err');alert('تعذر ربط المجلد: '+e.message)}return false}
 }
 async function restore(){dirHandle=await dbGet();if(!dirHandle){state('حفظ المتصفح متاح — لم يتم ربط مجلد البرنامج بعد','warn');return false}if(await perm(dirHandle,false)){state('تم العثور على مجلد البرنامج: '+dirHandle.name+' — يحتاج تأكيد الكتابة عند الحفظ','warn');return true}state('مجلد البرنامج محفوظ لكن يحتاج إعادة منح الصلاحية','warn');return false}
-async function ensure(){if(location.protocol!=='file:')return false;if(dirHandle&&await perm(dirHandle,true)){state('مجلد البرنامج متصل: '+dirHandle.name,'ok');return true}if(!dirHandle)dirHandle=await dbGet();if(dirHandle&&await perm(dirHandle,true)){state('مجلد البرنامج متصل: '+dirHandle.name,'ok');return true}return await connect()}
+async function ensure(){if(dirHandle&&await perm(dirHandle,true)){state('مجلد البرنامج متصل: '+dirHandle.name+' — النسخ: '+backupPath(),'ok');return true}if(!dirHandle)dirHandle=await dbGet();if(dirHandle&&await perm(dirHandle,true)){state('مجلد البرنامج متصل: '+dirHandle.name+' — النسخ: '+backupPath(),'ok');return true}return await connect()}
 async function disconnect(){dirHandle=null;await dbDel();state('تم فصل مجلد البرنامج — الحفظ سيكون بالتنزيل','warn')}
 async function folder(parts){if(!(await ensure()))throw new Error('لم يتم ربط مجلد البرنامج');let h=dirHandle;for(const part of parts)h=await h.getDirectoryHandle(part,{create:true});return h}
 async function writeText(parts,filename,text,mime='application/json'){const d=await folder(parts),fh=await d.getFileHandle(filename,{create:true}),w=await fh.createWritable();await w.write(new Blob([text],{type:mime+';charset=utf-8'}));await w.close();return [...parts,filename].join('/')}
@@ -4444,7 +4446,7 @@ async function backupAssets(){
 }
 async function saveJournals(rows,period=''){const obj={version:VERSION,period,createdAt:new Date().toISOString(),journals:rows||[]},year=(period||String(new Date().getFullYear())).slice(0,4),name='Journals_'+(period||new Date().toISOString().slice(0,10))+'.json';return await saveJSON(['Data','Journals',year],name,obj,true)}
 async function saveHR(period,payload){const year=(period||String(new Date().getFullYear())).slice(0,4);return await saveJSON(['Data','HR','Payroll',year],'HR_'+period+'.json',payload,true)}
-window.APSingleFileStorage={connect,disconnect,restore,ensure,saveJSON,backupAssets,saveJournals,saveHR};
+window.APSingleFileStorage={connect,disconnect,restore,ensure,saveJSON,backupAssets,saveJournals,saveHR,backupPath};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',restore);else restore();
 })();
 </script>
@@ -6167,7 +6169,7 @@ body.ap-fast-nav .page.active{animation:none!important}
 </style>
 <script id="ap342CoreIntegrationPatch">
 (()=>{'use strict';
-const VER='3.5.8';
+const VER='3.5.9';
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const norm=v=>String(v??'').trim().toLowerCase().replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ');
 const num=v=>Number.isFinite(Number(v))?Number(v):0;
@@ -6268,7 +6270,7 @@ setTimeout(patchExisting,2500);
 </style>
 <script id="v345FlexibleAdvisorAndReports">
 (()=>{'use strict';
-const V='3.5.8',q=id=>document.getElementById(id),assets=()=>window.APDataEngine?.getAssets?.()||window.assets||[];
+const V='3.5.9',q=id=>document.getElementById(id),assets=()=>window.APDataEngine?.getAssets?.()||window.assets||[];
 const norm=v=>String(v??'').toLowerCase().replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[ًٌٍَُِّْـ]/g,'').replace(/[^\u0600-\u06ffa-z0-9% ]/g,' ').replace(/\s+/g,' ').trim();
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=v=>Number.isFinite(Number(v))?Number(v):0,cash=v=>num(v).toLocaleString('ar-SA',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -6437,8 +6439,8 @@ async function resetPassword(){const username=document.getElementById('recoveryU
 async function setRecoveryCode(){const current=sessionStorage.getItem('assetsProCurrentUser'),admin=systemUsers.find(x=>x.username===current&&x.role==='Admin');if(!admin)return alert('تعيين رمز الاستعادة متاح لمدير النظام فقط.');const first=prompt('أدخل رمز استعادة جديدًا (8 أحرف أو أرقام على الأقل):');if(first===null)return;if(first.length<8)return alert('رمز الاستعادة قصير.');const second=prompt('أعد إدخال رمز الاستعادة للتأكيد:');if(first!==second)return alert('رمزا الاستعادة غير متطابقين.');localStorage.setItem(RECOVERY_KEY,await hash(first));alert('تم حفظ بصمة رمز الاستعادة. احتفظ بالرمز نفسه في مكان آمن خارج النظام.')}
 async function migratePasswords(){let changed=false;for(const user of systemUsers){if(user.password&&!user.passwordHash){user.passwordHash=await hash(user.password);delete user.password;changed=true}}if(changed)localStorage.setItem('assetsProUsers',JSON.stringify(systemUsers))}
 function safeUsers(){return systemUsers.map(({password,...u})=>({...u,passwordHash:u.passwordHash||''}))}
-function fullBackup(){const storage={};for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith('assetsPro')||key==='hr_employees_stable')storage[key]=localStorage.getItem(key)}storage.assetsProUsers=JSON.stringify(safeUsers());const currentAssets=window.APDataEngine?.getAssets?.()||[];return {app:'Assets Pro',schema:'assets-pro-complete-backup-v3',version:'3.5.8',createdAt:new Date().toISOString(),security:'password-hashes-only-no-plain-passwords',storage,currentAssets:Array.isArray(currentAssets)?currentAssets:[]}}
-async function exportFullBackup(){await migratePasswords();const payload=fullBackup(),filename='AssetsPro_Complete_Backup_'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';try{const linked=await window.APSingleFileStorage?.saveJSON?.(['Data','Backups','Complete'],filename,payload,false);if(linked?.ok){localStorage.setItem('assetsProLastBackup',new Date().toLocaleString('ar-SA'));window.updateBackupInfo?.();alert('تم حفظ النسخة الاحتياطية داخل مجلد البرنامج المرتبط:\n'+(linked.path||filename));return}}catch(e){}try{const response=await fetch('/api/backup-complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(response.ok){const result=await response.json();localStorage.setItem('assetsProLastBackup',new Date().toLocaleString('ar-SA'));window.updateBackupInfo?.();alert('تم حفظ النسخة الاحتياطية داخل مجلد النسخ الاحتياطية الخاص بالنظام:\n'+(result.relativePath||filename));return}}catch(e){}const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);alert('تعذر الوصول إلى المجلد المرتبط أو الخادم، لذلك تم تنزيل نسخة طوارئ إلى Downloads.')}
+function fullBackup(){const storage={};for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith('assetsPro')||key==='hr_employees_stable')storage[key]=localStorage.getItem(key)}storage.assetsProUsers=JSON.stringify(safeUsers());const currentAssets=window.APDataEngine?.getAssets?.()||[];return {app:'Assets Pro',schema:'assets-pro-complete-backup-v3',version:'3.5.9',createdAt:new Date().toISOString(),security:'password-hashes-only-no-plain-passwords',storage,currentAssets:Array.isArray(currentAssets)?currentAssets:[]}}
+async function exportFullBackup(){await migratePasswords();const payload=fullBackup(),filename='AssetsPro_Complete_Backup_'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';try{const linked=await window.APSingleFileStorage?.saveJSON?.(['Data','Backups','Complete'],filename,payload,false);if(linked?.ok){localStorage.setItem('assetsProLastBackup',new Date().toLocaleString('ar-SA'));window.updateBackupInfo?.();alert('تم حفظ النسخة الاحتياطية مباشرة على الجهاز داخل:\n'+(window.APSingleFileStorage?.backupPath?.()||linked.path)+'\n\nاسم الملف:\n'+filename);return}}catch(e){alert('لم يتم حفظ النسخة الاحتياطية. اختر مجلد Data Assets وامنح الموقع صلاحية الكتابة ثم حاول مرة أخرى.\n\n'+(e?.message||''));return}alert('لم يتم حفظ النسخة الاحتياطية. حدد مجلد Data Assets ثم حاول مرة أخرى.')}
 function importFullBackup(event){const file=event.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const b=JSON.parse(reader.result);if(b?.app!=='Assets Pro'||b?.schema!=='assets-pro-complete-backup-v3'||!b.storage)throw new Error('invalid');if(!confirm('سيتم استبدال بيانات النظام الحالية بالنسخة الاحتياطية ثم إعادة تحميل البرنامج. متابعة؟'))return;Object.entries(b.storage).forEach(([key,value])=>{if(typeof value==='string')localStorage.setItem(key,value)});if(Array.isArray(b.currentAssets)&&b.currentAssets.length)localStorage.setItem('assetsProAssets',JSON.stringify(b.currentAssets));localStorage.setItem('assetsProLastBackup',new Date().toLocaleString('ar-SA')+' — استعادة');alert('تمت استعادة النسخة الاحتياطية بنجاح. سيعاد تحميل البرنامج الآن.');location.reload()}catch(e){alert('ملف النسخة الاحتياطية غير صالح أو من إصدار غير مدعوم.')}finally{event.target.value=''}};reader.readAsText(file,'utf-8')}
 window.APSecurity={hash,verifyPassword,openFirstSetup,createFirstAdmin,openRecovery,closeRecovery,resetPassword,setRecoveryCode};
 window.exportBackup=exportFullBackup;window.importBackup=importFullBackup;window.APCompleteBackup={export:exportFullBackup,import:importFullBackup,payload:fullBackup};
