@@ -195,19 +195,24 @@
         <div>تسجيل الدخول إلى النظام</div>
       </div>
       <label>اسم المستخدم</label>
-      <input id="username" value="admin" />
+      <input id="username" autocomplete="username" placeholder="اسم المستخدم" />
       <label>كلمة المرور</label>
-      <input id="password" type="password" value="Admin@123" />
+      <input id="password" type="password" autocomplete="current-password" placeholder="كلمة المرور" />
       <button class="btn btn-primary" onclick="login()">دخول</button>
-      <div id="loginMsg" class="login-help">بيانات التجربة: admin / Admin@123</div>
+      <button class="btn" style="width:100%;margin-top:8px" type="button" onclick="APSecurity.openRecovery()">نسيت كلمة المرور؟</button>
+      <div id="loginMsg" class="login-help">أدخل بيانات الدخول الخاصة بك.</div>
     </div>
   </section>
+
+  <div id="firstAdminModal" class="modal hidden"><div class="modal-card" style="width:min(560px,96vw)"><div class="modal-head"><h3>تهيئة المستخدم الرئيسي</h3></div><p class="note">يظهر هذا الإعداد مرة واحدة عند عدم وجود مستخدمين. احتفظ برمز الاستعادة في مكان آمن خارج النظام.</p><div class="grid-2"><label>اسم المستخدم<input id="setupAdminUser" value="admin" autocomplete="username"></label><label>الاسم الكامل<input id="setupAdminName" value="مدير النظام"></label><label style="grid-column:1/-1">البريد الإلكتروني<input id="setupAdminEmail" type="email" autocomplete="email" placeholder="name@company.com"></label><label>كلمة المرور الجديدة<input id="setupAdminPassword" type="password" autocomplete="new-password"></label><label>تأكيد كلمة المرور<input id="setupAdminConfirm" type="password" autocomplete="new-password"></label><label style="grid-column:1/-1">رمز استعادة سري<input id="setupRecoveryCode" type="password" autocomplete="off" placeholder="8 أحرف أو أرقام على الأقل"></label></div><div class="toolbar"><button class="btn main" onclick="APSecurity.createFirstAdmin()">إنشاء المستخدم الرئيسي</button></div></div></div>
+
+  <div id="passwordRecoveryModal" class="modal hidden"><div class="modal-card" style="width:min(560px,96vw)"><div class="modal-head"><h3>استعادة بيانات الدخول</h3><button class="close-btn" onclick="APSecurity.closeRecovery()">×</button></div><p class="note">يمكن إرسال رمز تحقق واسم المستخدم إلى البريد المسجل، أو استخدام رمز الاستعادة الإداري.</p><div class="grid-2"><label>البريد الإلكتروني<input id="recoveryEmail" type="email" autocomplete="email"></label><div><label>إرسال رمز البريد</label><button type="button" class="btn" style="width:100%" onclick="APEmailRecovery.sendCode()">إرسال إلى البريد</button></div><label>اسم المستخدم<input id="recoveryUsername" autocomplete="username"></label><label>رمز البريد أو رمز الاستعادة<input id="recoveryCode" type="password" autocomplete="one-time-code"></label><label>كلمة المرور الجديدة<input id="recoveryNewPassword" type="password" autocomplete="new-password"></label><label>تأكيد كلمة المرور<input id="recoveryConfirmPassword" type="password" autocomplete="new-password"></label></div><div class="toolbar"><button class="btn main" onclick="APSecurity.resetPassword()">تحديث كلمة المرور</button><button class="btn" onclick="APSecurity.closeRecovery()">إلغاء</button></div></div></div>
 
   <section id="app" class="app hidden">
     <aside>
       <div class="brand">
         <img id="sideLogo" class="mini-logo" alt="شعار الشركة" style="object-fit:contain;padding:5px" />
-        <div><strong>Assets Pro</strong><br><small>Enterprise v3.5.6</small></div>
+        <div><strong>Assets Pro</strong><br><small>Enterprise v3.5.8</small></div>
       </div>
       <nav class="ap-module-nav-static" id="apModuleSidebar">
 <button type="button" class="active" data-module="home">🏠 الرئيسية</button>
@@ -717,15 +722,16 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         <div class="section-card">
           <div class="section-head"><h3>إضافة/تعديل مستخدم</h3></div><input id="uEditIndex" type="hidden">
           <div class="inline-form">
-            <div><label>الاسم الكامل</label><input id="uName"></div><div><label>اسم المستخدم</label><input id="uUsername"></div>
+            <div><label>الاسم الكامل</label><input id="uName"></div><div><label>اسم المستخدم</label><input id="uUsername"></div><div><label>البريد الإلكتروني</label><input id="uEmail" type="email" placeholder="name@company.com"></div>
             <div><label>كلمة المرور</label><input id="uPassword" type="password"></div>
             <div><label>الدور</label><select id="uRole"><option value="Admin">مدير النظام</option><option value="Accountant">محاسب</option><option value="AssetManager">مسؤول الأصول</option><option value="Maintenance">مسؤول الصيانة</option><option value="Viewer">مشاهدة فقط</option></select></div>
             <div><label>مركز التكلفة</label><input id="uCostCenter" list="costCentersList"></div><div><label>الحالة</label><select id="uStatus"><option value="Active">نشط</option><option value="Inactive">موقوف</option></select></div>
-            <div><button class="btn main" onclick="saveUser()">حفظ المستخدم</button></div><div><button class="btn" onclick="clearUserForm()">جديد</button></div>
+            <div><button class="btn main" onclick="saveUser()">حفظ المستخدم</button></div><div><button class="btn" onclick="clearUserForm()">جديد</button></div><div><button class="btn" onclick="APSecurity.setRecoveryCode()">تعيين رمز الاستعادة</button></div>
           </div>
-          <div class="note">الصلاحيات الحالية: المدير كامل الصلاحيات، المحاسب للإهلاك والقيود، مسؤول الأصول لإدارة الأصول، مسؤول الصيانة لشاشة الصيانة، والمشاهد للقراءة فقط.</div>
+          <div id="userPagePermissions" class="section-card" style="margin-top:12px"><h3>صلاحيات الشاشات</h3><p class="note">حدد الشاشات التي يستطيع المستخدم فتحها. مدير النظام يمتلك جميع الشاشات دائمًا.</p><div id="userPagePermissionGrid" class="aplbl-settings"></div><div class="toolbar"><button type="button" class="btn" onclick="APPageAccess.selectAll(true)">تحديد الكل</button><button type="button" class="btn" onclick="APPageAccess.selectAll(false)">إلغاء الكل</button></div></div>
+          <div class="note">الصلاحيات الحالية: المدير كامل الصلاحيات، المحاسب للإهلاك والقيود، مسؤول الأصول لإدارة الأصول، مسؤول الصيانة لشاشة الصيانة، والمشاهد للقراءة فقط. كلمات المرور ورمز الاستعادة تُحفظ كبصمة مشفرة ولا يتم عرضها.</div>
         </div>
-        <div class="section-card"><div class="table-wrap"><table><thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الدور</th><th>مركز التكلفة</th><th>الحالة</th><th>آخر دخول</th><th>الإجراءات</th></tr></thead><tbody id="usersBody"></tbody></table></div></div>
+        <div class="section-card"><div class="table-wrap"><table><thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>البريد</th><th>الدور</th><th>مركز التكلفة</th><th>الحالة</th><th>آخر دخول</th><th>الإجراءات</th></tr></thead><tbody id="usersBody"></tbody></table></div></div>
       </section>
 
 
@@ -918,7 +924,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
             <span class="status">محلي</span>
           </div>
           <p style="color:var(--muted);margin-top:0">
-            تصدير نسخة احتياطية كاملة من إعدادات الشركة والشعار والفروع، ثم استعادتها لاحقًا على نفس الجهاز أو جهاز آخر.
+            تصدير نسخة احتياطية كاملة من بيانات النظام، ثم استعادتها لاحقًا على نفس الجهاز أو جهاز آخر.
           </p>
           <div class="backup-actions">
             <button class="btn btn-primary" style="width:auto;margin:0" onclick="exportBackup()">تصدير نسخة احتياطية</button>
@@ -934,7 +940,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
             <div class="mini"><small>نوع النسخة</small><strong style="display:block;margin-top:7px">JSON كامل</strong></div>
           </div>
           <div class="note">
-            في النسخة النهائية مع PostgreSQL ستشمل النسخة الاحتياطية جميع الأصول والإهلاك والقيود والمستخدمين والمرفقات.
+            تشمل الأصول والإهلاك والقيود والجرد والإعدادات والمستخدمين. كلمات المرور لا تُحفظ كنص مكشوف، بينما تحتاج مرفقات الملفات إلى نسخ مجلد البرنامج المرتبط أيضًا.
           </div>
         </div>
       </section>
@@ -1347,17 +1353,21 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       document.getElementById(btn.dataset.page).classList.add('active');
     });
   });
-  function login(){
+  async function login(){
     const u=document.getElementById('username').value.trim();
     const p=document.getElementById('password').value;
-    const found=(typeof systemUsers!=='undefined'?systemUsers:[]).find(x=>x.username===u&&x.password===p&&x.status==='Active');
-    if(found || (u==='admin' && p==='Admin@123')){
-      const current=found||{username:'admin',name:'مدير النظام',role:'Admin'};current.lastLogin=new Date().toLocaleString('ar-SA');
-      if(found){localStorage.setItem('assetsProUsers',JSON.stringify(systemUsers));}
+    if(!systemUsers.length){APSecurity.openFirstSetup();return}
+    const found=systemUsers.find(x=>x.username===u&&x.status==='Active');
+    const valid=found&&await APSecurity.verifyPassword(found,p);
+    if(valid){
+      const current=found;current.lastLogin=new Date().toLocaleString('ar-SA');
+      localStorage.setItem('assetsProUsers',JSON.stringify(systemUsers));
       sessionStorage.setItem('assetsProCurrentUser',current.username);
       document.getElementById('login').classList.add('hidden');
       document.getElementById('app').classList.remove('hidden');
       try{renderUsers();renderMaintenance();}catch(e){}
+      setTimeout(()=>window.APPageAccess?.apply?.(),40);
+      if(current.role==='Admin'&&!localStorage.getItem('assetsProRecoveryHash'))setTimeout(()=>alert('تنبيه أمني: لم يتم تعيين رمز استعادة بعد.\nانتقل إلى إدارة النظام ← المستخدمون والصلاحيات، ثم اختر «تعيين رمز الاستعادة».'),700);
     }else{
       document.getElementById('loginMsg').textContent='اسم المستخدم أو كلمة المرور غير صحيحة';
       document.getElementById('loginMsg').style.color='var(--danger)';
@@ -2871,7 +2881,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   // ===== Asset lifecycle, users and maintenance modules v0.8.0 =====
   let assetMovements=JSON.parse(localStorage.getItem('assetsProAssetMovements')||'[]');
   let maintenancePlans=JSON.parse(localStorage.getItem('assetsProMaintenance')||'[]');
-  let systemUsers=JSON.parse(localStorage.getItem('assetsProUsers')||'null')||[{name:'مدير النظام',username:'admin',password:'Admin@123',role:'Admin',costCenter:'',status:'Active',lastLogin:''}];
+  let systemUsers=JSON.parse(localStorage.getItem('assetsProUsers')||'null')||[];
   const todayISO=()=>new Date().toISOString().slice(0,10);
   function addMonthsISO(dateStr,months){const d=dateStr?new Date(dateStr+'T00:00:00'):new Date();d.setMonth(d.getMonth()+Number(months||0));return d.toISOString().slice(0,10)}
 
@@ -2901,18 +2911,20 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     assetHistory.innerHTML='<h4>سجل حركة الأصل</h4>'+(rows.length?rows.map(m=>`<div class="movement-item"><strong>${escapeHtml(m.date)} — ${escapeHtml(m.description||m.type)}</strong><br><small>${escapeHtml(m.notes||'')} ${m.fromCostCenter!==m.toCostCenter?' | '+escapeHtml(m.fromCostCenter)+' ← '+escapeHtml(m.toCostCenter):''}</small></div>`).join(''):'<div class="note">لا توجد حركات مسجلة لهذا الأصل.</div>');
   }
 
-  function clearUserForm(){uEditIndex.value='';uName.value='';uUsername.value='';uPassword.value='';uRole.value='Viewer';uCostCenter.value='';uStatus.value='Active'}
-  function saveUser(){
-    const idx=uEditIndex.value,obj={name:uName.value.trim(),username:uUsername.value.trim(),password:uPassword.value,role:uRole.value,costCenter:uCostCenter.value.trim(),status:uStatus.value,lastLogin:idx!==''?systemUsers[Number(idx)].lastLogin:''};
-    if(!obj.name||!obj.username||(!obj.password&&idx==='')){alert('أكمل الاسم واسم المستخدم وكلمة المرور.');return}
-    if(idx!==''&&!obj.password)obj.password=systemUsers[Number(idx)].password;
+  function clearUserForm(){uEditIndex.value='';uName.value='';uUsername.value='';uEmail.value='';uPassword.value='';uRole.value='Viewer';uCostCenter.value='';uStatus.value='Active';window.APPageAccess?.setSelected?.([])}
+  async function saveUser(){
+    const idx=uEditIndex.value,rawPassword=uPassword.value,obj={name:uName.value.trim(),username:uUsername.value.trim(),email:uEmail.value.trim(),role:uRole.value,costCenter:uCostCenter.value.trim(),status:uStatus.value,pages:window.APPageAccess?.selected?.()||[],lastLogin:idx!==''?systemUsers[Number(idx)].lastLogin:''};
+    if(!obj.name||!obj.username||!/^\S+@\S+\.\S+$/.test(obj.email)||(!rawPassword&&idx==='')){alert('أكمل الاسم واسم المستخدم والبريد الإلكتروني الصحيح وكلمة المرور.');return}
+    if(rawPassword&&rawPassword.length<8){alert('كلمة المرور يجب ألا تقل عن 8 أحرف.');return}
+    if(rawPassword)obj.passwordHash=await APSecurity.hash(rawPassword);else obj.passwordHash=systemUsers[Number(idx)].passwordHash;
     if(systemUsers.some((u,i)=>u.username.toLowerCase()===obj.username.toLowerCase()&&String(i)!==String(idx))){alert('اسم المستخدم مستخدم بالفعل.');return}
+    if(systemUsers.some((u,i)=>String(u.email||'').toLowerCase()===obj.email.toLowerCase()&&String(i)!==String(idx))){alert('البريد الإلكتروني مستخدم لمستخدم آخر.');return}
     if(idx==='')systemUsers.push(obj);else systemUsers[Number(idx)]=obj;localStorage.setItem('assetsProUsers',JSON.stringify(systemUsers));clearUserForm();renderUsers();
   }
-  function editUser(i){const u=systemUsers[i];uEditIndex.value=i;uName.value=u.name;uUsername.value=u.username;uPassword.value='';uRole.value=u.role;uCostCenter.value=u.costCenter||'';uStatus.value=u.status}
+  function editUser(i){const u=systemUsers[i];uEditIndex.value=i;uName.value=u.name;uUsername.value=u.username;uEmail.value=u.email||'';uPassword.value='';uRole.value=u.role;uCostCenter.value=u.costCenter||'';uStatus.value=u.status;window.APPageAccess?.setSelected?.(u.pages||[])}
   function deleteUser(i){if(systemUsers[i].username==='admin'){alert('لا يمكن حذف مستخدم المدير الأساسي.');return}if(confirm('حذف المستخدم؟')){systemUsers.splice(i,1);localStorage.setItem('assetsProUsers',JSON.stringify(systemUsers));renderUsers()}}
   function renderUsers(){
-    if(!document.getElementById('usersBody'))return;fillAssetLists();usersBody.innerHTML=systemUsers.map((u,i)=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.username)}</td><td>${escapeHtml(u.role)}</td><td>${escapeHtml(u.costCenter||'الكل')}</td><td><span class="status">${u.status==='Active'?'نشط':'موقوف'}</span></td><td>${escapeHtml(u.lastLogin||'—')}</td><td><button class="small-btn" onclick="editUser(${i})">تعديل</button> <button class="small-btn danger" onclick="deleteUser(${i})">حذف</button></td></tr>`).join('');
+    if(!document.getElementById('usersBody'))return;fillAssetLists();usersBody.innerHTML=systemUsers.map((u,i)=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.username)}</td><td>${escapeHtml(u.email||'—')}</td><td>${escapeHtml(u.role)}</td><td>${escapeHtml(u.costCenter||'الكل')}</td><td><span class="status">${u.status==='Active'?'نشط':'موقوف'}</span></td><td>${escapeHtml(u.lastLogin||'—')}</td><td><button class="small-btn" onclick="editUser(${i})">تعديل</button> <button class="small-btn danger" onclick="deleteUser(${i})">حذف</button></td></tr>`).join('');
     uTotal.textContent=systemUsers.length;uActive.textContent=systemUsers.filter(u=>u.status==='Active').length;uAdmins.textContent=systemUsers.filter(u=>u.role==='Admin').length;uLastLogin.textContent=systemUsers.map(u=>u.lastLogin).filter(Boolean).sort().pop()||'—';
   }
 
@@ -6155,7 +6167,7 @@ body.ap-fast-nav .page.active{animation:none!important}
 </style>
 <script id="ap342CoreIntegrationPatch">
 (()=>{'use strict';
-const VER='3.5.6';
+const VER='3.5.8';
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const norm=v=>String(v??'').trim().toLowerCase().replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ');
 const num=v=>Number.isFinite(Number(v))?Number(v):0;
@@ -6256,7 +6268,7 @@ setTimeout(patchExisting,2500);
 </style>
 <script id="v345FlexibleAdvisorAndReports">
 (()=>{'use strict';
-const V='3.5.6',q=id=>document.getElementById(id),assets=()=>window.APDataEngine?.getAssets?.()||window.assets||[];
+const V='3.5.8',q=id=>document.getElementById(id),assets=()=>window.APDataEngine?.getAssets?.()||window.assets||[];
 const norm=v=>String(v??'').toLowerCase().replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[ًٌٍَُِّْـ]/g,'').replace(/[^\u0600-\u06ffa-z0-9% ]/g,' ').replace(/\s+/g,' ').trim();
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=v=>Number.isFinite(Number(v))?Number(v):0,cash=v=>num(v).toLocaleString('ar-SA',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -6410,6 +6422,43 @@ function migrate(){let changed=false;
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(migrate,900),{once:true});else setTimeout(migrate,900);
 window.AP354={migrate,canonical};
+})();
+</script>
+<script id="v357SecurityBackupRecovery">
+(()=>{'use strict';
+const RECOVERY_KEY='assetsProRecoveryHash';
+async function hash(value){const data=new TextEncoder().encode(String(value||'')),buf=await crypto.subtle.digest('SHA-256',data);return [...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+async function verifyPassword(user,password){if(!user||!password)return false;if(user.passwordHash)return user.passwordHash===await hash(password);if(user.password===password){user.passwordHash=await hash(password);delete user.password;localStorage.setItem('assetsProUsers',JSON.stringify(systemUsers));return true}return false}
+function openFirstSetup(){document.getElementById('firstAdminModal')?.classList.remove('hidden')}
+async function createFirstAdmin(){if(systemUsers.length)return document.getElementById('firstAdminModal')?.classList.add('hidden');const username=document.getElementById('setupAdminUser')?.value.trim(),name=document.getElementById('setupAdminName')?.value.trim(),email=document.getElementById('setupAdminEmail')?.value.trim(),password=document.getElementById('setupAdminPassword')?.value||'',confirmPassword=document.getElementById('setupAdminConfirm')?.value||'',recovery=document.getElementById('setupRecoveryCode')?.value||'';if(!username||!name||!/^\S+@\S+\.\S+$/.test(email))return alert('أكمل اسم المستخدم والاسم والبريد الإلكتروني الصحيح.');if(password.length<8)return alert('كلمة المرور يجب ألا تقل عن 8 أحرف.');if(password!==confirmPassword)return alert('تأكيد كلمة المرور غير مطابق.');if(recovery.length<8)return alert('رمز الاستعادة يجب ألا يقل عن 8 أحرف أو أرقام.');systemUsers=[{name,username,email,passwordHash:await hash(password),role:'Admin',costCenter:'',status:'Active',lastLogin:''}];localStorage.setItem('assetsProUsers',JSON.stringify(systemUsers));localStorage.setItem(RECOVERY_KEY,await hash(recovery));document.getElementById('firstAdminModal').classList.add('hidden');document.getElementById('username').value=username;document.getElementById('password').value='';document.getElementById('loginMsg').textContent='تم إنشاء المستخدم الرئيسي. سجّل الدخول بكلمة المرور الجديدة.'}
+function openRecovery(){document.getElementById('passwordRecoveryModal')?.classList.remove('hidden')}
+function closeRecovery(){document.getElementById('passwordRecoveryModal')?.classList.add('hidden')}
+async function resetPassword(){const username=document.getElementById('recoveryUsername')?.value.trim(),code=document.getElementById('recoveryCode')?.value||'',password=document.getElementById('recoveryNewPassword')?.value||'',confirmation=document.getElementById('recoveryConfirmPassword')?.value||'',saved=localStorage.getItem(RECOVERY_KEY),emailToken=(()=>{try{return JSON.parse(sessionStorage.getItem('assetsProEmailRecovery')||'null')}catch(e){return null}})(),codeHash=await hash(code),adminValid=!!saved&&codeHash===saved,emailValid=!!emailToken&&emailToken.username===username&&emailToken.expires>Date.now()&&emailToken.codeHash===codeHash;if(!adminValid&&!emailValid)return alert('رمز الاستعادة أو رمز البريد غير صحيح أو انتهت صلاحيته.');if(password.length<8)return alert('كلمة المرور الجديدة يجب ألا تقل عن 8 أحرف.');if(password!==confirmation)return alert('تأكيد كلمة المرور غير مطابق.');const user=systemUsers.find(x=>x.username===username);if(!user)return alert('اسم المستخدم غير موجود.');user.passwordHash=await hash(password);delete user.password;user.status='Active';localStorage.setItem('assetsProUsers',JSON.stringify(systemUsers));sessionStorage.removeItem('assetsProEmailRecovery');closeRecovery();document.getElementById('username').value=username;document.getElementById('password').value='';document.getElementById('loginMsg').textContent='تم تحديث كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن.'}
+async function setRecoveryCode(){const current=sessionStorage.getItem('assetsProCurrentUser'),admin=systemUsers.find(x=>x.username===current&&x.role==='Admin');if(!admin)return alert('تعيين رمز الاستعادة متاح لمدير النظام فقط.');const first=prompt('أدخل رمز استعادة جديدًا (8 أحرف أو أرقام على الأقل):');if(first===null)return;if(first.length<8)return alert('رمز الاستعادة قصير.');const second=prompt('أعد إدخال رمز الاستعادة للتأكيد:');if(first!==second)return alert('رمزا الاستعادة غير متطابقين.');localStorage.setItem(RECOVERY_KEY,await hash(first));alert('تم حفظ بصمة رمز الاستعادة. احتفظ بالرمز نفسه في مكان آمن خارج النظام.')}
+async function migratePasswords(){let changed=false;for(const user of systemUsers){if(user.password&&!user.passwordHash){user.passwordHash=await hash(user.password);delete user.password;changed=true}}if(changed)localStorage.setItem('assetsProUsers',JSON.stringify(systemUsers))}
+function safeUsers(){return systemUsers.map(({password,...u})=>({...u,passwordHash:u.passwordHash||''}))}
+function fullBackup(){const storage={};for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith('assetsPro')||key==='hr_employees_stable')storage[key]=localStorage.getItem(key)}storage.assetsProUsers=JSON.stringify(safeUsers());const currentAssets=window.APDataEngine?.getAssets?.()||[];return {app:'Assets Pro',schema:'assets-pro-complete-backup-v3',version:'3.5.8',createdAt:new Date().toISOString(),security:'password-hashes-only-no-plain-passwords',storage,currentAssets:Array.isArray(currentAssets)?currentAssets:[]}}
+async function exportFullBackup(){await migratePasswords();const payload=fullBackup(),filename='AssetsPro_Complete_Backup_'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';try{const linked=await window.APSingleFileStorage?.saveJSON?.(['Data','Backups','Complete'],filename,payload,false);if(linked?.ok){localStorage.setItem('assetsProLastBackup',new Date().toLocaleString('ar-SA'));window.updateBackupInfo?.();alert('تم حفظ النسخة الاحتياطية داخل مجلد البرنامج المرتبط:\n'+(linked.path||filename));return}}catch(e){}try{const response=await fetch('/api/backup-complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(response.ok){const result=await response.json();localStorage.setItem('assetsProLastBackup',new Date().toLocaleString('ar-SA'));window.updateBackupInfo?.();alert('تم حفظ النسخة الاحتياطية داخل مجلد النسخ الاحتياطية الخاص بالنظام:\n'+(result.relativePath||filename));return}}catch(e){}const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);alert('تعذر الوصول إلى المجلد المرتبط أو الخادم، لذلك تم تنزيل نسخة طوارئ إلى Downloads.')}
+function importFullBackup(event){const file=event.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const b=JSON.parse(reader.result);if(b?.app!=='Assets Pro'||b?.schema!=='assets-pro-complete-backup-v3'||!b.storage)throw new Error('invalid');if(!confirm('سيتم استبدال بيانات النظام الحالية بالنسخة الاحتياطية ثم إعادة تحميل البرنامج. متابعة؟'))return;Object.entries(b.storage).forEach(([key,value])=>{if(typeof value==='string')localStorage.setItem(key,value)});if(Array.isArray(b.currentAssets)&&b.currentAssets.length)localStorage.setItem('assetsProAssets',JSON.stringify(b.currentAssets));localStorage.setItem('assetsProLastBackup',new Date().toLocaleString('ar-SA')+' — استعادة');alert('تمت استعادة النسخة الاحتياطية بنجاح. سيعاد تحميل البرنامج الآن.');location.reload()}catch(e){alert('ملف النسخة الاحتياطية غير صالح أو من إصدار غير مدعوم.')}finally{event.target.value=''}};reader.readAsText(file,'utf-8')}
+window.APSecurity={hash,verifyPassword,openFirstSetup,createFirstAdmin,openRecovery,closeRecovery,resetPassword,setRecoveryCode};
+window.exportBackup=exportFullBackup;window.importBackup=importFullBackup;window.APCompleteBackup={export:exportFullBackup,import:importFullBackup,payload:fullBackup};
+document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{if(!systemUsers.length)openFirstSetup()},1900),{once:true});
+})();
+</script>
+<script id="v358PagePermissionsEmailRecovery">
+(()=>{'use strict';
+const PAGES=[['dashboard','لوحة التحكم'],['commandcenter','مركز القيادة'],['assets','سجل الأصول'],['employeesDirectory','الموظفون والعهد'],['custody','حركات العهد'],['timeline','سجل حياة الأصل'],['maps','خرائط الأصول'],['assethealth','صحة الأصول'],['replacement','خطة الاستبدال'],['workflow','اعتمادات الأصول'],['depreciation','الإهلاك'],['journals','القيود المحاسبية'],['financialdash','اللوحة المالية'],['assetbudget','ميزانية الأصول'],['deprforecast','توقع الإهلاك'],['reconciliation','المطابقة'],['verificationcenter','مركز التحقق'],['inventorybarcode','الجرد بالموبايل'],['labels','الباركود والملصقات'],['reports','التقارير'],['integratedcost','التكلفة الشاملة'],['executive','الإدارة العليا'],['movementdash','تحليل الحركات'],['datavalidation','جودة البيانات'],['maintenance','الصيانة'],['maintdash','لوحة الصيانة'],['warranty','الضمان'],['vendors','الموردون'],['aiadvisor','AI Advisor'],['alerts','التنبيهات'],['masterdata','البيانات المرجعية'],['users','المستخدمون'],['systemhealth','صحة النظام'],['testcenter','مركز الاختبارات'],['auditTrail','سجل التدقيق'],['settings','الإعدادات']];
+function current(){const username=sessionStorage.getItem('assetsProCurrentUser');return systemUsers.find(x=>x.username===username)||null}
+function can(page){const user=current();if(!user)return false;if(user.role==='Admin')return true;if(!Array.isArray(user.pages))return true;return user.pages.includes(page)}
+function renderGrid(){const box=document.getElementById('userPagePermissionGrid');if(!box)return;box.innerHTML=PAGES.map(([id,label])=>`<label class="aplbl-check"><input type="checkbox" class="user-page-check" value="${id}"> ${label}</label>`).join('')}
+function selected(){return [...document.querySelectorAll('.user-page-check:checked')].map(x=>x.value)}
+function setSelected(pages){renderGrid();const set=new Set(pages||[]);document.querySelectorAll('.user-page-check').forEach(x=>x.checked=set.has(x.value))}
+function selectAll(value){document.querySelectorAll('.user-page-check').forEach(x=>x.checked=!!value)}
+function apply(){const user=current();if(!user)return;document.querySelectorAll('#apModuleGrid [data-open]').forEach(card=>card.style.display=can(card.dataset.open)?'':'none');const catalog=window.APModules?.catalog||{};document.querySelectorAll('#apModuleSidebar [data-module]').forEach(btn=>{const rows=catalog[btn.dataset.module]?.[2]||[];btn.style.display=user.role==='Admin'||rows.some(x=>can(x[0]))?'':'none'});const active=document.querySelector('.page.active');if(active&&!['modulehub'].includes(active.id)&&!can(active.id))window.APModules?.render?.('home')}
+function install(){renderGrid();const modules=window.APModules;if(modules&&!modules.__pageAccess){const oldOpen=modules.open,oldRender=modules.render;modules.open=function(id){if(id!=='hrlink'&&!can(id)){alert('ليس لديك صلاحية لفتح هذه الشاشة.');return false}return oldOpen(id)};modules.render=function(key){const result=oldRender(key);setTimeout(apply,0);return result};modules.__pageAccess=true}const nav=window.navigateToPage;if(typeof nav==='function'&&!nav.__pageAccess){window.navigateToPage=function(id){if(!can(id)){alert('ليس لديك صلاحية لفتح هذه الشاشة.');return false}return nav.apply(this,arguments)};window.navigateToPage.__pageAccess=true}apply()}
+async function sendCode(){const email=document.getElementById('recoveryEmail')?.value.trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(email))return alert('أدخل البريد الإلكتروني المسجل.');const user=systemUsers.find(x=>String(x.email||'').trim().toLowerCase()===email);if(!user)return alert('إذا كان البريد مسجلًا فستصل رسالة الاستعادة.');const code=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');try{const response=await fetch('/api/recovery-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:user.email,username:user.username,code})}),result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.message||'تعذر الإرسال');sessionStorage.setItem('assetsProEmailRecovery',JSON.stringify({username:user.username,codeHash:await APSecurity.hash(code),expires:Date.now()+600000}));document.getElementById('recoveryUsername').value=user.username;alert('تم إرسال اسم المستخدم ورمز تحقق صالح لمدة 10 دقائق إلى البريد المسجل.')}catch(e){alert(e.message||'تعذر إرسال رسالة الاستعادة.') }}
+window.APPageAccess={can,selected,setSelected,selectAll,apply,install,pages:PAGES};window.APEmailRecovery={sendCode};
+document.addEventListener('DOMContentLoaded',()=>setTimeout(install,2100),{once:true});
 })();
 </script>
 </body>

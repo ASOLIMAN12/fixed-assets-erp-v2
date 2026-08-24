@@ -39,7 +39,7 @@ function backup(file,prefix){
   files.slice(20).forEach(f=>{try{fs.unlinkSync(path.join(dir,f))}catch(e){}});
 }
 
-app.get('/api/health',(req,res)=>res.json({ok:true,app:'Assets Pro',version:'3.5.6',time:new Date().toISOString()}));
+app.get('/api/health',(req,res)=>res.json({ok:true,app:'Assets Pro',version:'3.5.8',time:new Date().toISOString()}));
 
 app.get('/api/master-data',(req,res)=>{
   res.json(readJSON(MASTER,{schema:'assets-pro-master-data-v1',assets:[]}));
@@ -97,6 +97,29 @@ app.post('/api/backup-assets',(req,res)=>{
   const name=`assets_manual_${stamp}.json`,target=path.join(dir,name);
   writeJSON(target,body);
   res.json({ok:true,savedAt:new Date().toISOString(),relativePath:path.join('backups',name)});
+});
+
+app.post('/api/backup-complete',(req,res)=>{
+  const body=req.body||{};
+  if(body.app!=='Assets Pro'||body.schema!=='assets-pro-complete-backup-v3')return res.status(400).json({ok:false,message:'Invalid backup payload'});
+  const dir=path.join(DATA,'backups','complete');fs.mkdirSync(dir,{recursive:true});
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-'),name=`AssetsPro_Complete_${stamp}.json`,target=path.join(dir,name);
+  writeJSON(target,body);
+  const files=fs.readdirSync(dir).filter(x=>x.endsWith('.json')).sort().reverse();files.slice(30).forEach(f=>{try{fs.unlinkSync(path.join(dir,f))}catch(e){}});
+  res.json({ok:true,savedAt:new Date().toISOString(),relativePath:path.join('backups','complete',name)});
+});
+
+const recoveryRate=new Map();
+app.post('/api/recovery-email',async(req,res)=>{
+  const to=String(req.body?.to||'').trim(),username=String(req.body?.username||'').trim(),code=String(req.body?.code||'').trim();
+  if(!/^\S+@\S+\.\S+$/.test(to)||!username||!/^\d{6}$/.test(code))return res.status(400).json({ok:false,message:'Invalid request'});
+  const now=Date.now(),last=recoveryRate.get(to)||0;if(now-last<60000)return res.status(429).json({ok:false,message:'انتظر دقيقة قبل إعادة الإرسال.'});
+  const apiKey=process.env.RESEND_API_KEY,from=process.env.RECOVERY_FROM_EMAIL;
+  if(!apiKey||!from)return res.status(503).json({ok:false,message:'خدمة البريد غير مهيأة على الخادم.'});
+  try{
+    const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify({from,to:[to],subject:'Assets Pro — استعادة بيانات الدخول',html:`<div dir="rtl" style="font-family:Arial"><h2>استعادة بيانات الدخول</h2><p>اسم المستخدم: <b>${username.replace(/[<>&]/g,'')}</b></p><p>رمز التحقق: <b style="font-size:24px;letter-spacing:4px">${code}</b></p><p>صالح لمدة 10 دقائق. إذا لم تطلب الاستعادة فتجاهل الرسالة.</p></div>`})});
+    if(!response.ok)throw new Error('Email provider rejected request');recoveryRate.set(to,now);res.json({ok:true});
+  }catch(e){res.status(502).json({ok:false,message:'تعذر إرسال البريد حاليًا.'})}
 });
 
 app.post('/api/hr/save-month',(req,res)=>{
