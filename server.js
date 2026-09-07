@@ -122,6 +122,20 @@ app.post('/api/recovery-email',async(req,res)=>{
   }catch(e){res.status(502).json({ok:false,message:'تعذر إرسال البريد حاليًا.'})}
 });
 
+app.post('/api/admin-approval-email',async(req,res)=>{
+  const to=String(req.body?.to||'').trim(),username=String(req.body?.username||'').trim(),code=String(req.body?.code||'').trim();
+  if(!/^\S+@\S+\.\S+$/.test(to)||!username||!/^\d{6}$/.test(code))return res.status(400).json({ok:false,message:'طلب المصادقة غير صالح.'});
+  const now=Date.now(),rateKey='admin:'+to.toLowerCase(),last=recoveryRate.get(rateKey)||0;
+  if(now-last<60000)return res.status(429).json({ok:false,message:'انتظر دقيقة قبل إعادة إرسال رمز المصادقة.'});
+  const apiKey=process.env.RESEND_API_KEY,from=process.env.RECOVERY_FROM_EMAIL;
+  if(!apiKey||!from)return res.status(503).json({ok:false,message:'خدمة البريد غير مهيأة على الخادم.'});
+  const safeUsername=username.replace(/[<>&]/g,'');
+  try{
+    const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify({from,to:[to],subject:'Assets Pro — مصادقة تعديل حساب الأدمن',html:`<div dir="rtl" style="font-family:Arial"><h2>مصادقة تعديل حساب مدير النظام</h2><p>الأدمن الحالي: <b>${safeUsername}</b></p><p>رمز المصادقة: <b style="font-size:24px;letter-spacing:4px">${code}</b></p><p>الرمز صالح لمدة 10 دقائق ويستخدم مرة واحدة. إذا لم تطلب تعديل بيانات الأدمن فتجاهل الرسالة وراجع سجل الدخول.</p></div>`})});
+    if(!response.ok)throw new Error('Email provider rejected request');recoveryRate.set(rateKey,now);res.json({ok:true});
+  }catch(e){res.status(502).json({ok:false,message:'تعذر إرسال رمز مصادقة الأدمن حاليًا.'})}
+});
+
 app.post('/api/hr/save-month',(req,res)=>{
   const body=req.body||{};
   if(!body.period)return res.status(400).send('Period is required');

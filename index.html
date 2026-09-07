@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Assets Pro v3.6.1 — Login Privacy Fix</title>
+  <title>Assets Pro v3.6.2 — Users & Admin Protection</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <style>
@@ -183,7 +183,7 @@
       <h1>Assets Pro</h1>
       <div>Fixed Assets Management System</div>
       <div class="progress"><span></span></div>
-      <p>الإصدار v3.6.1 — Login Privacy Fix</p>
+      <p>الإصدار v3.6.2 — Users & Admin Protection</p>
     </div>
   </section>
 
@@ -212,7 +212,7 @@
     <aside>
       <div class="brand">
         <img id="sideLogo" class="mini-logo" alt="شعار الشركة" style="object-fit:contain;padding:5px" />
-        <div><strong>Assets Pro</strong><br><small>Enterprise v3.6.1</small></div>
+        <div><strong>Assets Pro</strong><br><small>Enterprise v3.6.2</small></div>
       </div>
       <nav class="ap-module-nav-static" id="apModuleSidebar">
 <button type="button" class="active" data-module="home">🏠 الرئيسية</button>
@@ -724,9 +724,19 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
           <div class="inline-form">
             <div><label>الاسم الكامل</label><input id="uName"></div><div><label>اسم المستخدم</label><input id="uUsername"></div><div><label>البريد الإلكتروني</label><input id="uEmail" type="email" placeholder="name@company.com"></div>
             <div><label>كلمة المرور</label><input id="uPassword" type="password"></div>
-            <div><label>الدور</label><select id="uRole"><option value="Admin">مدير النظام</option><option value="Accountant">محاسب</option><option value="AssetManager">مسؤول الأصول</option><option value="Maintenance">مسؤول الصيانة</option><option value="Viewer">مشاهدة فقط</option></select></div>
+            <div><label>الدور</label><select id="uRole"><option value="Admin">مدير النظام</option><option value="Accountant">محاسب</option><option value="AssetManager">مسؤول الأصول</option><option value="Maintenance">مسؤول الصيانة</option><option value="Viewer" selected>مشاهدة فقط</option></select></div>
             <div><label>مركز التكلفة</label><input id="uCostCenter" list="costCentersList"></div><div><label>الحالة</label><select id="uStatus"><option value="Active">نشط</option><option value="Inactive">موقوف</option></select></div>
             <div><button class="btn main" onclick="saveUser()">حفظ المستخدم</button></div><div><button class="btn" onclick="clearUserForm()">جديد</button></div><div><button class="btn" onclick="APSecurity.setRecoveryCode()">تعيين رمز الاستعادة</button></div>
+          </div>
+          <div id="adminApprovalBox" class="section-card hidden" style="margin-top:12px;border-color:#f59e0b;background:#fffbeb">
+            <h3>مصادقة تعديل حساب مدير النظام</h3>
+            <p class="note">يجب أن يكون المستخدم الحالي مديرًا، ثم يؤكد كلمة مروره ويُدخل الرمز المرسل إلى بريده المسجل.</p>
+            <div class="inline-form">
+              <div><label>كلمة مرور الأدمن الحالي</label><input id="adminApprovalPassword" type="password" autocomplete="current-password"></div>
+              <div><label>رمز المصادقة</label><input id="adminApprovalCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6 أرقام"></div>
+              <div><button type="button" class="btn" onclick="APAdminProtection.sendCode()">إرسال رمز المصادقة</button></div>
+              <div><small id="adminApprovalStatus" class="note">لم يتم إرسال رمز بعد.</small></div>
+            </div>
           </div>
           <div id="userPagePermissions" class="section-card" style="margin-top:12px"><h3>صلاحيات الشاشات</h3><p class="note">حدد الشاشات التي يستطيع المستخدم فتحها. مدير النظام يمتلك جميع الشاشات دائمًا.</p><div id="userPagePermissionGrid" class="aplbl-settings"></div><div class="toolbar"><button type="button" class="btn" onclick="APPageAccess.selectAll(true)">تحديد الكل</button><button type="button" class="btn" onclick="APPageAccess.selectAll(false)">إلغاء الكل</button></div></div>
           <div class="note">الصلاحيات الحالية: المدير كامل الصلاحيات، المحاسب للإهلاك والقيود، مسؤول الأصول لإدارة الأصول، مسؤول الصيانة لشاشة الصيانة، والمشاهد للقراءة فقط. كلمات المرور ورمز الاستعادة تُحفظ كبصمة مشفرة ولا يتم عرضها.</div>
@@ -1603,6 +1613,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const target=document.getElementById(page);
     if(target){ target.scrollIntoView({behavior:'smooth',block:'start'}); }
     if(page==='depreciation'){ try{renderDepResults()}catch(e){} }
+    if(page==='users'){ try{renderUsers()}catch(e){console.error('Users render failed',e)} }
   }
   function openDepKpiDetail(type){
     const run=depreciationRuns.find(r=>r.period===depPeriod());
@@ -2891,7 +2902,41 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   // ===== Asset lifecycle, users and maintenance modules v0.8.0 =====
   let assetMovements=JSON.parse(localStorage.getItem('assetsProAssetMovements')||'[]');
   let maintenancePlans=JSON.parse(localStorage.getItem('assetsProMaintenance')||'[]');
-  let systemUsers=JSON.parse(localStorage.getItem('assetsProUsers')||'null')||[];
+  function loadSystemUsers(){
+    try{const rows=JSON.parse(localStorage.getItem('assetsProUsers')||'[]');return Array.isArray(rows)?rows:[]}
+    catch(e){console.error('Invalid users storage',e);return[]}
+  }
+  let systemUsers=loadSystemUsers();
+  const adminApproval={codeHash:'',expires:0,actor:'',email:''};
+  function currentSystemUser(){const username=sessionStorage.getItem('assetsProCurrentUser');return systemUsers.find(x=>x.username===username&&x.status==='Active')||null}
+  function protectedAdminChange(){const idx=String(document.getElementById('uEditIndex')?.value??''),target=idx!==''?systemUsers[Number(idx)]:null,nextRole=document.getElementById('uRole')?.value;return target?.role==='Admin'||nextRole==='Admin'}
+  function resetAdminApproval(){adminApproval.codeHash='';adminApproval.expires=0;adminApproval.actor='';adminApproval.email='';const password=document.getElementById('adminApprovalPassword'),code=document.getElementById('adminApprovalCode'),status=document.getElementById('adminApprovalStatus');if(password)password.value='';if(code)code.value='';if(status)status.textContent='لم يتم إرسال رمز بعد.'}
+  function updateAdminApprovalUI(){const box=document.getElementById('adminApprovalBox');if(box)box.classList.toggle('hidden',!protectedAdminChange())}
+  async function sendAdminApprovalCode(){
+    if(!protectedAdminChange())return alert('المصادقة غير مطلوبة لهذا التعديل.');
+    const actor=currentSystemUser();
+    if(!actor||actor.role!=='Admin')return alert('لا يجوز تعديل بيانات الأدمن إلا بعد الدخول بحساب مدير نظام.');
+    const password=document.getElementById('adminApprovalPassword')?.value||'';
+    if(!await APSecurity.verifyPassword(actor,password))return alert('كلمة مرور الأدمن الحالي غير صحيحة.');
+    const editingSelf=document.getElementById('uEditIndex')?.value!==''&&systemUsers[Number(document.getElementById('uEditIndex').value)]===actor;
+    const email=String(actor.email||(editingSelf?document.getElementById('uEmail')?.value:'')||'').trim().toLowerCase();
+    if(!/^\S+@\S+\.\S+$/.test(email))return alert('يجب تسجيل بريد إلكتروني صحيح للأدمن أولًا. أدخل البريد في بيانات نفس حساب الأدمن ثم أعد الإرسال.');
+    const code=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');
+    try{
+      const response=await fetch('/api/admin-approval-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:email,username:actor.username,code})}),result=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(result.message||'تعذر إرسال رمز المصادقة.');
+      adminApproval.codeHash=await APSecurity.hash(code);adminApproval.expires=Date.now()+600000;adminApproval.actor=actor.username;adminApproval.email=email;
+      document.getElementById('adminApprovalCode').value='';document.getElementById('adminApprovalStatus').textContent='تم إرسال رمز صالح لمدة 10 دقائق إلى بريد الأدمن المسجل.';
+    }catch(e){alert(e.message||'تعذر إرسال رمز المصادقة.')}
+  }
+  async function authorizeAdminChange(){
+    if(!protectedAdminChange())return true;
+    const actor=currentSystemUser();
+    if(!actor||actor.role!=='Admin'){alert('لا يجوز تعديل أو إنشاء حساب مدير إلا بعد الدخول بحساب أدمن.');return false}
+    const code=document.getElementById('adminApprovalCode')?.value.trim()||'',valid=/^\d{6}$/.test(code)&&adminApproval.actor===actor.username&&adminApproval.expires>Date.now()&&adminApproval.codeHash===await APSecurity.hash(code);
+    if(!valid){alert('أدخل رمز المصادقة الصحيح المرسل إلى بريد الأدمن قبل الحفظ.');return false}
+    return true;
+  }
   const todayISO=()=>new Date().toISOString().slice(0,10);
   function addMonthsISO(dateStr,months){const d=dateStr?new Date(dateStr+'T00:00:00'):new Date();d.setMonth(d.getMonth()+Number(months||0));return d.toISOString().slice(0,10)}
 
@@ -2921,7 +2966,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     assetHistory.innerHTML='<h4>سجل حركة الأصل</h4>'+(rows.length?rows.map(m=>`<div class="movement-item"><strong>${escapeHtml(m.date)} — ${escapeHtml(m.description||m.type)}</strong><br><small>${escapeHtml(m.notes||'')} ${m.fromCostCenter!==m.toCostCenter?' | '+escapeHtml(m.fromCostCenter)+' ← '+escapeHtml(m.toCostCenter):''}</small></div>`).join(''):'<div class="note">لا توجد حركات مسجلة لهذا الأصل.</div>');
   }
 
-  function clearUserForm(){uEditIndex.value='';uName.value='';uUsername.value='';uEmail.value='';uPassword.value='';uRole.value='Viewer';uCostCenter.value='';uStatus.value='Active';window.APPageAccess?.setSelected?.([])}
+  function clearUserForm(){uEditIndex.value='';uName.value='';uUsername.value='';uEmail.value='';uPassword.value='';uRole.value='Viewer';uCostCenter.value='';uStatus.value='Active';resetAdminApproval();updateAdminApprovalUI();window.APPageAccess?.setSelected?.([])}
   async function saveUser(){
     const idx=uEditIndex.value,rawPassword=uPassword.value,obj={name:uName.value.trim(),username:uUsername.value.trim(),email:uEmail.value.trim(),role:uRole.value,costCenter:uCostCenter.value.trim(),status:uStatus.value,pages:window.APPageAccess?.selected?.()||[],lastLogin:idx!==''?systemUsers[Number(idx)].lastLogin:''};
     if(!obj.name||!obj.username||!/^\S+@\S+\.\S+$/.test(obj.email)||(!rawPassword&&idx==='')){alert('أكمل الاسم واسم المستخدم والبريد الإلكتروني الصحيح وكلمة المرور.');return}
@@ -2929,14 +2974,22 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(rawPassword)obj.passwordHash=await APSecurity.hash(rawPassword);else obj.passwordHash=systemUsers[Number(idx)].passwordHash;
     if(systemUsers.some((u,i)=>u.username.toLowerCase()===obj.username.toLowerCase()&&String(i)!==String(idx))){alert('اسم المستخدم مستخدم بالفعل.');return}
     if(systemUsers.some((u,i)=>String(u.email||'').toLowerCase()===obj.email.toLowerCase()&&String(i)!==String(idx))){alert('البريد الإلكتروني مستخدم لمستخدم آخر.');return}
+    if(!await authorizeAdminChange())return;
     if(idx==='')systemUsers.push(obj);else systemUsers[Number(idx)]=obj;localStorage.setItem('assetsProUsers',JSON.stringify(systemUsers));clearUserForm();renderUsers();window.APPageAccess?.apply?.();
   }
-  function editUser(i){const u=systemUsers[i];uEditIndex.value=i;uName.value=u.name;uUsername.value=u.username;uEmail.value=u.email||'';uPassword.value='';uRole.value=u.role;uCostCenter.value=u.costCenter||'';uStatus.value=u.status;window.APPageAccess?.setSelected?.(u.pages||[])}
-  function deleteUser(i){if(systemUsers[i].username==='admin'){alert('لا يمكن حذف مستخدم المدير الأساسي.');return}if(confirm('حذف المستخدم؟')){systemUsers.splice(i,1);localStorage.setItem('assetsProUsers',JSON.stringify(systemUsers));renderUsers()}}
+  function editUser(i){const u=systemUsers[i],actor=currentSystemUser();if(!u)return;if(u.role==='Admin'&&actor?.role!=='Admin'){alert('لا يجوز تعديل بيانات الأدمن إلا بعد الدخول بحساب مدير نظام.');return}uEditIndex.value=i;uName.value=u.name;uUsername.value=u.username;uEmail.value=u.email||'';uPassword.value='';uRole.value=u.role;uCostCenter.value=u.costCenter||'';uStatus.value=u.status;resetAdminApproval();updateAdminApprovalUI();window.APPageAccess?.setSelected?.(u.pages||[])}
+  function deleteUser(i){const target=systemUsers[i];if(!target)return;if(target.role==='Admin'){alert('لا يمكن حذف حساب مدير النظام. يمكن إيقافه من خلال أدمن آخر بعد المصادقة.');return}if(confirm('حذف المستخدم؟')){systemUsers.splice(i,1);localStorage.setItem('assetsProUsers',JSON.stringify(systemUsers));renderUsers()}}
   function renderUsers(){
-    if(!document.getElementById('usersBody'))return;fillAssetLists();usersBody.innerHTML=systemUsers.map((u,i)=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.username)}</td><td>${escapeHtml(u.email||'—')}</td><td>${escapeHtml(u.role)}</td><td>${escapeHtml(u.costCenter||'الكل')}</td><td><span class="status">${u.status==='Active'?'نشط':'موقوف'}</span></td><td>${escapeHtml(u.lastLogin||'—')}</td><td><button class="small-btn" onclick="editUser(${i})">تعديل</button> <button class="small-btn danger" onclick="deleteUser(${i})">حذف</button></td></tr>`).join('');
-    uTotal.textContent=systemUsers.length;uActive.textContent=systemUsers.filter(u=>u.status==='Active').length;uAdmins.textContent=systemUsers.filter(u=>u.role==='Admin').length;uLastLogin.textContent=systemUsers.map(u=>u.lastLogin).filter(Boolean).sort().pop()||'—';
+    const body=document.getElementById('usersBody');if(!body)return;
+    const stored=loadSystemUsers();if(stored.length||!systemUsers.length)systemUsers=stored;
+    try{fillAssetLists()}catch(e){console.warn('User cost center list unavailable',e)}
+    const actor=currentSystemUser();body.innerHTML=systemUsers.map((u,i)=>{const canEdit=u.role!=='Admin'||actor?.role==='Admin';return `<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.username)}</td><td>${escapeHtml(u.email||'—')}</td><td>${escapeHtml(u.role)}</td><td>${escapeHtml(u.costCenter||'الكل')}</td><td><span class="status">${u.status==='Active'?'نشط':'موقوف'}</span></td><td>${escapeHtml(u.lastLogin||'—')}</td><td>${canEdit?`<button class="small-btn" onclick="editUser(${i})">تعديل</button>`:'<span class="note">محمي</span>'} ${u.role!=='Admin'?`<button class="small-btn danger" onclick="deleteUser(${i})">حذف</button>`:''}</td></tr>`}).join('');
+    const total=document.getElementById('uTotal'),active=document.getElementById('uActive'),admins=document.getElementById('uAdmins'),last=document.getElementById('uLastLogin');
+    if(total)total.textContent=systemUsers.length;if(active)active.textContent=systemUsers.filter(u=>u.status==='Active').length;if(admins)admins.textContent=systemUsers.filter(u=>u.role==='Admin').length;if(last)last.textContent=systemUsers.map(u=>u.lastLogin).filter(Boolean).sort().pop()||'—';
+    updateAdminApprovalUI();
   }
+  window.APAdminProtection={sendCode:sendAdminApprovalCode,authorize:authorizeAdminChange,refresh:updateAdminApprovalUI};
+  document.addEventListener('DOMContentLoaded',()=>document.getElementById('uRole')?.addEventListener('change',()=>{resetAdminApproval();updateAdminApprovalUI()}),{once:true});
 
   function maintenanceStatus(p){const d=new Date((p.nextDate||'2999-12-31')+'T00:00:00'),now=new Date();now.setHours(0,0,0,0);const days=Math.ceil((d-now)/86400000);if(p.completed)return'مكتملة';if(days<0)return'متأخرة';if(days<=30)return'مستحقة';return'سارية'}
   function fillMaintenanceAssets(){if(!document.getElementById('mAsset'))return;const cur=mAsset.value;mAsset.innerHTML='<option value="">اختر الأصل</option>'+assets.filter(a=>!['Scrapped','Sold'].includes(a.status)).map(a=>`<option value="${escapeHtml(a.number)}" ${a.number===cur?'selected':''}>${escapeHtml(a.number+' - '+a.name)}</option>`).join('')}
@@ -4083,7 +4136,7 @@ adminmod:['إدارة النظام','الإعدادات والبيانات ال�
 ['verificationcenter','✅','مركز التحقق والمطابقة','اعتماد الأرقام قبل الترحيل والتصدير'],
 ['auditTrail','🧾','سجل التدقيق','تاريخ العمليات والتغييرات'],
 ['settings','⚙️','الإعدادات','إعدادات الشركة والنظام']]]};
-const R={dashboard:'renderDashboard',executive:'renderExecutiveDashboard',financialdash:'renderFinancialDashboard',maintdash:'renderMaintenanceDashboard',movementdash:'renderMovementDashboard',maps:'renderAssetMap',assets:'renderAssets',timeline:'renderTimelinePage',alerts:'renderAlertsPage',depreciation:'renderDepreciation',journals:'renderJournal',maintenance:'renderMaintenance',reports:'renderReports',systemhealth:'refreshSystemHealth',testcenter:'renderTestCenter',vendors:'renderVendors',warranty:'renderWarranty',integratedcost:'renderIntegratedCostReport',verificationcenter:'renderVerificationCenter',assetlifecycle:'renderAssetLifecycle',inventorybarcode:'renderInventoryBarcode',labels:'renderLabels'};
+const R={dashboard:'renderDashboard',executive:'renderExecutiveDashboard',financialdash:'renderFinancialDashboard',maintdash:'renderMaintenanceDashboard',movementdash:'renderMovementDashboard',maps:'renderAssetMap',assets:'renderAssets',timeline:'renderTimelinePage',alerts:'renderAlertsPage',depreciation:'renderDepreciation',journals:'renderJournal',maintenance:'renderMaintenance',reports:'renderReports',users:'renderUsers',systemhealth:'refreshSystemHealth',testcenter:'renderTestCenter',vendors:'renderVendors',warranty:'renderWarranty',integratedcost:'renderIntegratedCostReport',verificationcenter:'renderVerificationCenter',assetlifecycle:'renderAssetLifecycle',inventorybarcode:'renderInventoryBarcode',labels:'renderLabels'};
 function activate(id){const p=document.getElementById(id);if(!p){alert('هذه الوظيفة غير متاحة في النسخة الحالية: '+id);return false}document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));p.classList.add('active');return true}
 function open(id){if(id==='hrlink'){location.href='/hr.html';return;}if(!activate(id))return;try{const fn=R[id];if(fn&&typeof window[fn]==='function')window[fn]()}catch(e){console.error(e)}}
 function render(k){const m=M[k]||M.home;if(!activate('modulehub'))return;document.getElementById('apModuleTitle').textContent=m[0];document.getElementById('apModuleDesc').textContent=m[1];const g=document.getElementById('apModuleGrid');g.innerHTML=m[2].map(c=>`<button type="button" class="ap-module-card" data-open="${c[0]}"><div class="mi">${c[1]}</div><h3>${c[2]}</h3><p>${c[3]}</p><span class="go">فتح ←</span></button>`).join('');g.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>open(b.dataset.open));document.querySelectorAll('#apModuleSidebar [data-module]').forEach(b=>b.classList.toggle('active',b.dataset.module===k));sessionStorage.setItem('assetsProActiveModule',k)}
@@ -6447,7 +6500,7 @@ async function resetPassword(){const username=document.getElementById('recoveryU
 async function setRecoveryCode(){const current=sessionStorage.getItem('assetsProCurrentUser'),admin=systemUsers.find(x=>x.username===current&&x.role==='Admin');if(!admin)return alert('تعيين رمز الاستعادة متاح لمدير النظام فقط.');const first=prompt('أدخل رمز استعادة جديدًا (8 أحرف أو أرقام على الأقل):');if(first===null)return;if(first.length<8)return alert('رمز الاستعادة قصير.');const second=prompt('أعد إدخال رمز الاستعادة للتأكيد:');if(first!==second)return alert('رمزا الاستعادة غير متطابقين.');localStorage.setItem(RECOVERY_KEY,await hash(first));alert('تم حفظ بصمة رمز الاستعادة. احتفظ بالرمز نفسه في مكان آمن خارج النظام.')}
 async function migratePasswords(){let changed=false;for(const user of systemUsers){if(user.password&&!user.passwordHash){user.passwordHash=await hash(user.password);delete user.password;changed=true}}if(changed)localStorage.setItem('assetsProUsers',JSON.stringify(systemUsers))}
 function safeUsers(){return systemUsers.map(({password,...u})=>({...u,passwordHash:u.passwordHash||''}))}
-function fullBackup(){const storage={};for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith('assetsPro')||key==='hr_employees_stable')storage[key]=localStorage.getItem(key)}storage.assetsProUsers=JSON.stringify(safeUsers());const currentAssets=window.APDataEngine?.getAssets?.()||[];return {app:'Assets Pro',schema:'assets-pro-complete-backup-v3',version:'3.6.1',createdAt:new Date().toISOString(),security:'password-hashes-only-no-plain-passwords',storage,currentAssets:Array.isArray(currentAssets)?currentAssets:[]}}
+function fullBackup(){const storage={};for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith('assetsPro')||key==='hr_employees_stable')storage[key]=localStorage.getItem(key)}storage.assetsProUsers=JSON.stringify(safeUsers());const currentAssets=window.APDataEngine?.getAssets?.()||[];return {app:'Assets Pro',schema:'assets-pro-complete-backup-v3',version:'3.6.2',createdAt:new Date().toISOString(),security:'password-hashes-only-no-plain-passwords',storage,currentAssets:Array.isArray(currentAssets)?currentAssets:[]}}
 async function exportFullBackup(){await migratePasswords();const payload=fullBackup(),filename='AssetsPro_Complete_Backup_'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';try{const linked=await window.APSingleFileStorage?.saveJSON?.(['Data','Backups','Complete'],filename,payload,false);if(linked?.ok){localStorage.setItem('assetsProLastBackup',new Date().toLocaleString('ar-SA'));window.updateBackupInfo?.();alert('تم حفظ النسخة الاحتياطية مباشرة على الجهاز داخل:\n'+(window.APSingleFileStorage?.backupPath?.()||linked.path)+'\n\nاسم الملف:\n'+filename);return}}catch(e){alert('لم يتم حفظ النسخة الاحتياطية. اختر مجلد Data Assets وامنح الموقع صلاحية الكتابة ثم حاول مرة أخرى.\n\n'+(e?.message||''));return}alert('لم يتم حفظ النسخة الاحتياطية. حدد مجلد Data Assets ثم حاول مرة أخرى.')}
 function importFullBackup(event){const file=event.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const b=JSON.parse(reader.result);if(b?.app!=='Assets Pro'||b?.schema!=='assets-pro-complete-backup-v3'||!b.storage)throw new Error('invalid');if(!confirm('سيتم استبدال بيانات النظام الحالية بالنسخة الاحتياطية ثم إعادة تحميل البرنامج. متابعة؟'))return;Object.entries(b.storage).forEach(([key,value])=>{if(typeof value==='string')localStorage.setItem(key,value)});if(Array.isArray(b.currentAssets)&&b.currentAssets.length)localStorage.setItem('assetsProAssets',JSON.stringify(b.currentAssets));localStorage.setItem('assetsProLastBackup',new Date().toLocaleString('ar-SA')+' — استعادة');alert('تمت استعادة النسخة الاحتياطية بنجاح. سيعاد تحميل البرنامج الآن.');location.reload()}catch(e){alert('ملف النسخة الاحتياطية غير صالح أو من إصدار غير مدعوم.')}finally{event.target.value=''}};reader.readAsText(file,'utf-8')}
 window.APSecurity={hash,verifyPassword,openFirstSetup,createFirstAdmin,openRecovery,closeRecovery,resetPassword,setRecoveryCode};
