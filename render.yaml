@@ -8,7 +8,13 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20
+      - key: DATABASE_URL
+        sync: false
+      - key: INITIAL_SETUP_KEY
+        sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: RECOVERY_FROM_EMAIL
         sync: false
+      - key: SESSION_HOURS
+        value: 8

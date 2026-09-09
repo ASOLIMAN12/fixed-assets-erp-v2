@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Assets Pro v3.7.0 — Central Users Database</title>
+  <title>Assets Pro v3.9.0 — Web + Windows Shield</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <style>
@@ -183,7 +183,7 @@
       <h1>Assets Pro</h1>
       <div>Fixed Assets Management System</div>
       <div class="progress"><span></span></div>
-      <p>الإصدار v3.7.0 — Central Users Database</p>
+      <p>الإصدار v3.9.0 — Web + Windows Shield</p>
     </div>
   </section>
 
@@ -212,7 +212,7 @@
     <aside>
       <div class="brand">
         <img id="sideLogo" class="mini-logo" alt="شعار الشركة" style="object-fit:contain;padding:5px" />
-        <div><strong>Assets Pro</strong><br><small>Enterprise v3.7.0</small></div>
+        <div><strong>Assets Pro</strong><br><small>Enterprise v3.9.0</small></div>
       </div>
       <nav class="ap-module-nav-static" id="apModuleSidebar">
 <button type="button" class="active" data-module="home">🏠 الرئيسية</button>
@@ -231,6 +231,7 @@
       <div class="topbar">
         <div><strong id="companyTitle">شركة لنا الطبية</strong><br><small id="today"></small></div>
         <div class="top-actions">
+          <button id="securityCenterButton" class="icon-btn" hidden onclick="location.href='/security.html'">🛡️ مركز الحماية</button>
           <button class="icon-btn" onclick="toggleTheme()">الوضع الداكن</button>
           <button class="icon-btn" onclick="logout()">تسجيل الخروج</button>
         </div>
@@ -6500,12 +6501,12 @@ async function resetPassword(){const username=document.getElementById('recoveryU
 async function setRecoveryCode(){const current=sessionStorage.getItem('assetsProCurrentUser'),admin=systemUsers.find(x=>x.username===current&&x.role==='Admin');if(!admin)return alert('تعيين رمز الاستعادة متاح لمدير النظام فقط.');const first=prompt('أدخل رمز استعادة جديدًا (8 أحرف أو أرقام على الأقل):');if(first===null)return;if(first.length<8)return alert('رمز الاستعادة قصير.');const second=prompt('أعد إدخال رمز الاستعادة للتأكيد:');if(first!==second)return alert('رمزا الاستعادة غير متطابقين.');localStorage.setItem(RECOVERY_KEY,await hash(first));alert('تم حفظ بصمة رمز الاستعادة. احتفظ بالرمز نفسه في مكان آمن خارج النظام.')}
 async function migratePasswords(){let changed=false;for(const user of systemUsers){if(user.password&&!user.passwordHash){user.passwordHash=await hash(user.password);delete user.password;changed=true}}if(changed)localStorage.setItem('assetsProUsers',JSON.stringify(systemUsers))}
 function safeUsers(){return systemUsers.map(({password,...u})=>({...u,passwordHash:u.passwordHash||''}))}
-function fullBackup(){const storage={};for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if((key?.startsWith('assetsPro')&&key!=='assetsProUsers'&&key!=='assetsProRecoveryHash')||key==='hr_employees_stable')storage[key]=localStorage.getItem(key)}const currentAssets=window.APDataEngine?.getAssets?.()||[];return {app:'Assets Pro',schema:'assets-pro-complete-backup-v3',version:'3.7.0',createdAt:new Date().toISOString(),security:'central-users-excluded',storage,currentAssets:Array.isArray(currentAssets)?currentAssets:[]}}
+function fullBackup(){const storage={};for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if((key?.startsWith('assetsPro')&&key!=='assetsProUsers'&&key!=='assetsProRecoveryHash')||key==='hr_employees_stable')storage[key]=localStorage.getItem(key)}const currentAssets=window.APDataEngine?.getAssets?.()||[];return {app:'Assets Pro',schema:'assets-pro-complete-backup-v3',version:'3.9.0',createdAt:new Date().toISOString(),security:'central-users-excluded',storage,currentAssets:Array.isArray(currentAssets)?currentAssets:[]}}
 async function exportFullBackup(){await migratePasswords();const payload=fullBackup(),filename='AssetsPro_Complete_Backup_'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';try{const linked=await window.APSingleFileStorage?.saveJSON?.(['Data','Backups','Complete'],filename,payload,false);if(linked?.ok){localStorage.setItem('assetsProLastBackup',new Date().toLocaleString('ar-SA'));window.updateBackupInfo?.();alert('تم حفظ النسخة الاحتياطية مباشرة على الجهاز داخل:\n'+(window.APSingleFileStorage?.backupPath?.()||linked.path)+'\n\nاسم الملف:\n'+filename);return}}catch(e){alert('لم يتم حفظ النسخة الاحتياطية. اختر مجلد Data Assets وامنح الموقع صلاحية الكتابة ثم حاول مرة أخرى.\n\n'+(e?.message||''));return}alert('لم يتم حفظ النسخة الاحتياطية. حدد مجلد Data Assets ثم حاول مرة أخرى.')}
 function importFullBackup(event){const file=event.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const b=JSON.parse(reader.result);if(b?.app!=='Assets Pro'||b?.schema!=='assets-pro-complete-backup-v3'||!b.storage)throw new Error('invalid');if(!confirm('سيتم استبدال بيانات النظام الحالية بالنسخة الاحتياطية ثم إعادة تحميل البرنامج. متابعة؟'))return;Object.entries(b.storage).forEach(([key,value])=>{if(typeof value==='string')localStorage.setItem(key,value)});if(Array.isArray(b.currentAssets)&&b.currentAssets.length)localStorage.setItem('assetsProAssets',JSON.stringify(b.currentAssets));localStorage.setItem('assetsProLastBackup',new Date().toLocaleString('ar-SA')+' — استعادة');alert('تمت استعادة النسخة الاحتياطية بنجاح. سيعاد تحميل البرنامج الآن.');location.reload()}catch(e){alert('ملف النسخة الاحتياطية غير صالح أو من إصدار غير مدعوم.')}finally{event.target.value=''}};reader.readAsText(file,'utf-8')}
 window.APSecurity={hash,verifyPassword,openFirstSetup,createFirstAdmin,openRecovery,closeRecovery,resetPassword,setRecoveryCode};
 window.exportBackup=exportFullBackup;window.importBackup=importFullBackup;window.APCompleteBackup={export:exportFullBackup,import:importFullBackup,payload:fullBackup};
-// First-admin setup is controlled by the central authentication server in v3.7.0.
+// First-admin setup is controlled by the central authentication server in v3.9.0.
 })();
 </script>
 <script id="v358PagePermissionsEmailRecovery">
@@ -6559,6 +6560,7 @@ function enterApp(user){
   document.getElementById('firstAdminModal')?.classList.add('hidden');
   document.getElementById('login')?.classList.add('hidden');
   document.getElementById('app')?.classList.remove('hidden');
+  const securityButton=document.getElementById('securityCenterButton');if(securityButton)securityButton.hidden=user.role!=='Admin';
   try{renderMaintenance()}catch(e){}
   try{sessionStorage.setItem('assetsProActiveModule','home');window.APModules?.render?.('home')}catch(e){}
   setTimeout(()=>window.APPageAccess?.apply?.(),50);

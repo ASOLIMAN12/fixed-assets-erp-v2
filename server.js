@@ -3,6 +3,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const {createCentralAuth} = require('./central-auth');
+const {installSecurity} = require('./security-middleware');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,15 +13,8 @@ const INVENTORY = path.join(DATA,'inventory.json');
 const JOURNALS = path.join(DATA,'journals.json');
 const HR_MONTHS = path.join(DATA,'hr_months.json');
 
-app.use(express.json({limit:'25mb'}));
-app.use(express.static(__dirname,{
-  setHeaders(res,file){
-    if(file.endsWith('.html')){
-      res.setHeader('Cache-Control','no-store');
-      res.setHeader('Permissions-Policy','camera=(self)');
-    }
-  }
-}));
+installSecurity(app);
+app.use(express.json({limit:'12mb',strict:true}));
 
 async function start(){
 const auth = await createCentralAuth(app);
@@ -43,9 +37,9 @@ function backup(file,prefix){
   files.slice(20).forEach(f=>{try{fs.unlinkSync(path.join(dir,f))}catch(e){}});
 }
 
-app.get('/api/health',(req,res)=>res.json({ok:true,app:'Assets Pro',version:'3.7.0',centralAuth:auth.configured,time:new Date().toISOString()}));
+app.get('/api/health',(req,res)=>res.json({ok:true,app:'Assets Pro',version:'3.9.0',time:new Date().toISOString()}));
 
-app.get('/api/master-data',(req,res)=>{
+app.get('/api/master-data',auth.required,(req,res)=>{
   res.json(readJSON(MASTER,{schema:'assets-pro-master-data-v1',assets:[]}));
 });
 
@@ -60,7 +54,7 @@ app.put('/api/master-data',auth.requirePage('masterdata'),(req,res)=>{
   res.json({ok:true,assetCount:body.assets.length,updatedAt:body.updatedAt});
 });
 
-app.get('/api/inventory',(req,res)=>{
+app.get('/api/inventory',auth.requirePage('inventorybarcode'),(req,res)=>{
   res.json(readJSON(INVENTORY,{sessions:[],records:[]}));
 });
 
@@ -75,13 +69,13 @@ app.post('/api/inventory/sync',auth.requirePage('inventorybarcode'),(req,res)=>{
   res.json({ok:true,updatedAt:body.updatedAt});
 });
 
-app.get('/api/backups',(req,res)=>{
+app.get('/api/backups',auth.admin,(req,res)=>{
   const dir=path.join(DATA,'backups');
   if(!fs.existsSync(dir))return res.json([]);
   res.json(fs.readdirSync(dir).sort().reverse());
 });
 
-app.get('/api/journals',(req,res)=>{
+app.get('/api/journals',auth.requirePage('journals'),(req,res)=>{
   res.json(readJSON(JOURNALS,{journals:[],savedAt:''}));
 });
 
@@ -96,6 +90,7 @@ app.post('/api/journals',auth.requirePage('journals'),(req,res)=>{
 
 app.post('/api/backup-assets',auth.admin,(req,res)=>{
   const body=req.body||{};
+  if(!body || typeof body!=='object' || Array.isArray(body))return res.status(400).json({ok:false,message:'Invalid backup payload'});
   const dir=path.join(DATA,'backups');fs.mkdirSync(dir,{recursive:true});
   const stamp=new Date().toISOString().replace(/[:.]/g,'-');
   const name=`assets_manual_${stamp}.json`,target=path.join(dir,name);
@@ -139,14 +134,19 @@ app.post('/api/export-journals',auth.requirePage('journals'),(req,res)=>{
   res.send('\ufeff'+html);
 });
 
-app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'index.html')));
+app.get('/',(req,res)=>{res.setHeader('Cache-Control','no-store');res.sendFile(path.join(__dirname,'index.html'))});
+app.get('/index.html',(req,res)=>{res.setHeader('Cache-Control','no-store');res.sendFile(path.join(__dirname,'index.html'))});
+app.get('/hr.html',auth.requirePage('hrlink'),(req,res)=>{res.setHeader('Cache-Control','no-store');res.sendFile(path.join(__dirname,'hr.html'))});
+app.get('/security.html',auth.admin,(req,res)=>{res.setHeader('Cache-Control','no-store');res.sendFile(path.join(__dirname,'security.html'))});
+app.use('/api',(req,res)=>res.status(404).json({ok:false,message:'المسار المطلوب غير موجود.'}));
+app.get('*',(req,res)=>res.status(404).send('Not found'));
 
 app.use((error,req,res,next)=>{
-  console.error('Unhandled server error:',error.message);
+  console.error('Unhandled server error:',req.requestId || '-',error.message);
   res.status(500).json({ok:false,message:'حدث خطأ غير متوقع في الخادم.'});
 });
 
-app.listen(PORT,'0.0.0.0',()=>console.log(`Assets Pro v3.7.0 running on port ${PORT}`));
+app.listen(PORT,'0.0.0.0',()=>console.log(`Assets Pro v3.9.0 Web + Windows Shield running on port ${PORT}`));
 }
 
 start().catch(error=>{

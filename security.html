@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Assets Pro — مركز حماية الويب وويندوز</title>
+  <style>
+    :root{--bg:#07111f;--panel:#0f1e30;--line:#233a53;--text:#eff6ff;--muted:#9db0c6;--good:#34d399;--bad:#fb7185;--blue:#38bdf8}
+    *{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#06101d,#0b1c2e);color:var(--text);font-family:Tahoma,Arial,sans-serif;min-height:100vh}
+    header{display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--line);background:#081522ee;position:sticky;top:0;z-index:2}
+    h1{font-size:22px;margin:0}.sub{color:var(--muted);font-size:13px;margin-top:4px}.wrap{max-width:1250px;margin:auto;padding:24px}.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+    .card,.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 18px 45px #0003}.card small{color:var(--muted)}.card strong{display:block;font-size:28px;margin-top:8px}.good{color:var(--good)}.bad{color:var(--bad)}
+    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.btn{border:1px solid var(--line);background:#142a41;color:#fff;border-radius:10px;padding:10px 14px;cursor:pointer}.btn.primary{background:#0369a1}.btn.danger{background:#9f1239}.btn:hover{filter:brightness(1.15)}
+    .table-wrap{overflow:auto;max-height:58vh}table{width:100%;border-collapse:collapse;min-width:900px}th,td{padding:11px;border-bottom:1px solid var(--line);text-align:right;font-size:13px}th{color:#bcd0e5;position:sticky;top:0;background:var(--panel)}
+    .panel+.panel{margin-top:18px}.token{display:none;width:100%;padding:14px;border:1px dashed var(--blue);border-radius:12px;background:#06101d;direction:ltr;text-align:center;font:bold 18px Consolas;word-break:break-all}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#25384c}.pill.ok{color:var(--good);background:#064e3b66}.pill.no{color:var(--bad);background:#88133766}.empty{text-align:center;color:var(--muted);padding:32px}
+    @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}header{padding:14px}.wrap{padding:14px}}@media(max-width:520px){.cards{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<header><div><h1>🛡️ مركز حماية Assets Pro</h1><div class="sub">حماية الويب وأجهزة ويندوز — الإصدار 3.9.0</div></div><button class="btn" onclick="location.href='/'">العودة للبرنامج</button></header>
+<main class="wrap">
+  <section class="cards">
+    <div class="card"><small>أحداث آخر 24 ساعة</small><strong id="events24h">—</strong></div>
+    <div class="card"><small>طلبات محظورة</small><strong id="blocked24h" class="bad">—</strong></div>
+    <div class="card"><small>دخول ناجح</small><strong id="logins24h" class="good">—</strong></div>
+    <div class="card"><small>جلسات نشطة</small><strong id="activeSessions">—</strong></div>
+    <div class="card"><small>حسابات مقفلة مؤقتًا</small><strong id="lockedUsers" class="bad">—</strong></div>
+    <div class="card"><small>أجهزة ويندوز المتصلة</small><strong id="devicesOnline" class="good">—</strong></div>
+    <div class="card"><small>أجهزة عالية الخطورة</small><strong id="criticalDevices" class="bad">—</strong></div>
+  </section>
+  <section class="panel">
+    <div class="toolbar"><strong>أجهزة Windows Security Agent</strong><button class="btn primary" onclick="createEnrollment()">إنشاء رمز ربط جهاز ويندوز</button><button class="btn" onclick="loadAll()">تحديث الأجهزة</button></div>
+    <div id="enrollmentToken" class="token"></div>
+    <p id="enrollmentHelp" class="sub"></p>
+    <div class="table-wrap"><table><thead><tr><th>الجهاز</th><th>آخر اتصال</th><th>درجة الخطر</th><th>Defender</th><th>Firewall</th><th>BitLocker</th><th>التنبيهات</th><th>الإجراء</th></tr></thead><tbody id="devices"><tr><td colspan="8" class="empty">لا توجد أجهزة مرتبطة.</td></tr></tbody></table></div>
+  </section>
+  <section class="panel">
+    <div class="toolbar"><button class="btn primary" onclick="loadAll()">تحديث السجل</button><button class="btn danger" onclick="revokeOthers()">إنهاء كل الجلسات الأخرى</button><span id="status" class="sub">جاري تحميل بيانات الأمان…</span></div>
+    <div class="table-wrap"><table><thead><tr><th>الوقت</th><th>الحدث</th><th>النتيجة</th><th>المستخدم</th><th>عنوان الاتصال</th><th>التفاصيل</th></tr></thead><tbody id="events"><tr><td colspan="6" class="empty">جاري التحميل…</td></tr></tbody></table></div>
+  </section>
+</main>
+<script>
+'use strict';
+const labels={login_success:'تسجيل دخول ناجح',login_failed:'فشل تسجيل الدخول',login_lockout:'قفل الحساب مؤقتًا',login_locked:'محاولة دخول لحساب مقفل',login_rate_limited:'تجاوز معدل المحاولات',logout:'تسجيل خروج',access_denied:'منع وصول',admin_otp_sent:'إرسال مصادقة الأدمن',admin_otp_denied:'رفض مصادقة الأدمن',recovery_requested:'طلب استعادة',recovery_failed:'فشل الاستعادة',password_reset:'تغيير كلمة المرور',user_created:'إنشاء مستخدم',user_updated:'تعديل مستخدم',user_deleted:'حذف مستخدم',sessions_revoked:'إنهاء الجلسات',system_initialized:'تهيئة النظام',recovery_code_changed:'تغيير رمز الاستعادة',device_enrollment_created:'إنشاء رمز ربط جهاز',device_enrollment_failed:'فشل ربط جهاز',device_enrolled:'ربط جهاز ويندوز',device_auth_failed:'رفض اتصال جهاز',device_alert:'تنبيه جهاز ويندوز',device_revoked:'إلغاء ربط جهاز'};
+async function api(path,options={}){const response=await fetch(path,{cache:'no-store',credentials:'same-origin',...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});const data=await response.json().catch(()=>({}));if(response.status===401){location.href='/';throw new Error('انتهت الجلسة')}if(!response.ok)throw new Error(data.message||'تعذر تنفيذ الطلب');return data}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function details(value){try{const text=JSON.stringify(value||{});return text==='{}'?'—':text}catch(_){return '—'}}
+function renderDevices(rows){const body=document.getElementById('devices');body.innerHTML=rows.length?rows.map(row=>{const seen=row.lastSeen?new Date(row.lastSeen):null,online=seen&&Date.now()-seen.getTime()<10*60*1000,risk=Number(row.riskScore||0);return `<tr><td><b>${esc(row.deviceName)}</b><br><span class="sub">${esc(row.osVersion)}</span></td><td><span class="pill ${online?'ok':'no'}">${online?'متصل':'غير متصل'}</span><br>${seen?esc(seen.toLocaleString('ar-SA')):'—'}</td><td><b class="${risk>45?'bad':risk<20?'good':''}">${risk}/100</b></td><td>${row.defenderEnabled&&row.realtimeEnabled?'✅':'⚠️'}</td><td>${row.firewallEnabled?'✅':'⚠️'}</td><td>${esc(row.bitlockerStatus)}</td><td>${row.alerts.length?esc(row.alerts.join(' | ')):'لا يوجد'}</td><td><button class="btn danger" onclick="revokeDevice('${row.deviceId}')">إلغاء الربط</button></td></tr>`}).join(''):'<tr><td colspan="8" class="empty">لا توجد أجهزة مرتبطة بعد.</td></tr>'}
+async function loadAll(){const status=document.getElementById('status');status.textContent='جاري التحديث…';try{const [summary,log,deviceData]=await Promise.all([api('/api/security/summary'),api('/api/security/events?limit=150'),api('/api/security/devices')]);for(const key of ['events24h','blocked24h','logins24h','activeSessions','lockedUsers','devicesOnline','criticalDevices'])document.getElementById(key).textContent=summary[key]??0;renderDevices(deviceData.devices||[]);document.getElementById('events').innerHTML=log.events.length?log.events.map(row=>`<tr><td>${esc(new Date(row.created_at).toLocaleString('ar-SA'))}</td><td>${esc(labels[row.event_type]||row.event_type)}</td><td><span class="pill ${row.success?'ok':'no'}">${row.success?'ناجح':'محظور'}</span></td><td>${esc(row.user_name||row.username_key||'غير معروف')}</td><td dir="ltr">${esc(row.ip_address||'—')}</td><td>${esc(details(row.details))}</td></tr>`).join(''):'<tr><td colspan="6" class="empty">لا توجد أحداث أمنية بعد.</td></tr>';status.textContent=`آخر تحديث: ${new Date().toLocaleTimeString('ar-SA')}`}catch(error){status.textContent=error.message}}
+async function createEnrollment(){try{const result=await api('/api/security/devices/enrollment-token',{method:'POST',body:'{}'}),box=document.getElementById('enrollmentToken');box.textContent=result.token;box.style.display='block';document.getElementById('enrollmentHelp').textContent='انسخ هذا الرمز إلى برنامج تثبيت ويندوز. صالح لمدة 30 دقيقة ويستخدم مرة واحدة فقط.';try{await navigator.clipboard.writeText(result.token)}catch(_){}}catch(error){alert(error.message)}}
+async function revokeDevice(deviceId){if(!confirm('إلغاء ربط هذا الجهاز؟ سيتوقف عن إرسال بيانات الحماية حتى إعادة تثبيته برمز جديد.'))return;try{await api('/api/security/devices/'+encodeURIComponent(deviceId),{method:'DELETE'});await loadAll()}catch(error){alert(error.message)}}
+async function revokeOthers(){if(!confirm('سيتم تسجيل خروج جميع المستخدمين على الأجهزة الأخرى. هل تريد المتابعة؟'))return;try{const result=await api('/api/security/sessions/revoke-others',{method:'POST',body:'{}'});alert(`تم إنهاء ${result.revoked} جلسة.`);loadAll()}catch(error){alert(error.message)}}
+loadAll();setInterval(loadAll,60000);
+</script>
+</body>
+</html>
