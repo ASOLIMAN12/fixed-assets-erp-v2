@@ -2,6 +2,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const {createCentralAuth} = require('./central-auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,6 +22,9 @@ app.use(express.static(__dirname,{
   }
 }));
 
+async function start(){
+const auth = await createCentralAuth(app);
+
 function readJSON(file,fallback){
   try{return JSON.parse(fs.readFileSync(file,'utf8'))}catch(e){return fallback}
 }
@@ -39,13 +43,13 @@ function backup(file,prefix){
   files.slice(20).forEach(f=>{try{fs.unlinkSync(path.join(dir,f))}catch(e){}});
 }
 
-app.get('/api/health',(req,res)=>res.json({ok:true,app:'Assets Pro',version:'3.6.0',time:new Date().toISOString()}));
+app.get('/api/health',(req,res)=>res.json({ok:true,app:'Assets Pro',version:'3.7.0',centralAuth:auth.configured,time:new Date().toISOString()}));
 
 app.get('/api/master-data',(req,res)=>{
   res.json(readJSON(MASTER,{schema:'assets-pro-master-data-v1',assets:[]}));
 });
 
-app.put('/api/master-data',(req,res)=>{
+app.put('/api/master-data',auth.requirePage('masterdata'),(req,res)=>{
   const body=req.body||{};
   if(body.schema!=='assets-pro-master-data-v1' || !Array.isArray(body.assets)){
     return res.status(400).send('Invalid master data payload');
@@ -60,7 +64,7 @@ app.get('/api/inventory',(req,res)=>{
   res.json(readJSON(INVENTORY,{sessions:[],records:[]}));
 });
 
-app.post('/api/inventory/sync',(req,res)=>{
+app.post('/api/inventory/sync',auth.requirePage('inventorybarcode'),(req,res)=>{
   const body=req.body||{};
   if(!Array.isArray(body.sessions)||!Array.isArray(body.records)){
     return res.status(400).send('Invalid inventory payload');
@@ -81,7 +85,7 @@ app.get('/api/journals',(req,res)=>{
   res.json(readJSON(JOURNALS,{journals:[],savedAt:''}));
 });
 
-app.post('/api/journals',(req,res)=>{
+app.post('/api/journals',auth.requirePage('journals'),(req,res)=>{
   const body=req.body||{};
   if(!Array.isArray(body.journals))return res.status(400).send('Invalid journals payload');
   backup(JOURNALS,'journals');
@@ -90,7 +94,7 @@ app.post('/api/journals',(req,res)=>{
   res.json({ok:true,count:payload.journals.length,savedAt:payload.savedAt});
 });
 
-app.post('/api/backup-assets',(req,res)=>{
+app.post('/api/backup-assets',auth.admin,(req,res)=>{
   const body=req.body||{};
   const dir=path.join(DATA,'backups');fs.mkdirSync(dir,{recursive:true});
   const stamp=new Date().toISOString().replace(/[:.]/g,'-');
@@ -99,7 +103,7 @@ app.post('/api/backup-assets',(req,res)=>{
   res.json({ok:true,savedAt:new Date().toISOString(),relativePath:path.join('backups',name)});
 });
 
-app.post('/api/backup-complete',(req,res)=>{
+app.post('/api/backup-complete',auth.admin,(req,res)=>{
   const body=req.body||{};
   if(body.app!=='Assets Pro'||body.schema!=='assets-pro-complete-backup-v3')return res.status(400).json({ok:false,message:'Invalid backup payload'});
   const dir=path.join(DATA,'backups','complete');fs.mkdirSync(dir,{recursive:true});
@@ -109,34 +113,10 @@ app.post('/api/backup-complete',(req,res)=>{
   res.json({ok:true,savedAt:new Date().toISOString(),relativePath:path.join('backups','complete',name)});
 });
 
-const recoveryRate=new Map();
-app.post('/api/recovery-email',async(req,res)=>{
-  const to=String(req.body?.to||'').trim(),username=String(req.body?.username||'').trim(),code=String(req.body?.code||'').trim();
-  if(!/^\S+@\S+\.\S+$/.test(to)||!username||!/^\d{6}$/.test(code))return res.status(400).json({ok:false,message:'Invalid request'});
-  const now=Date.now(),last=recoveryRate.get(to)||0;if(now-last<60000)return res.status(429).json({ok:false,message:'انتظر دقيقة قبل إعادة الإرسال.'});
-  const apiKey=process.env.RESEND_API_KEY,from=process.env.RECOVERY_FROM_EMAIL;
-  if(!apiKey||!from)return res.status(503).json({ok:false,message:'خدمة البريد غير مهيأة على الخادم.'});
-  try{
-    const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify({from,to:[to],subject:'Assets Pro — استعادة بيانات الدخول',html:`<div dir="rtl" style="font-family:Arial"><h2>استعادة بيانات الدخول</h2><p>اسم المستخدم: <b>${username.replace(/[<>&]/g,'')}</b></p><p>رمز التحقق: <b style="font-size:24px;letter-spacing:4px">${code}</b></p><p>صالح لمدة 10 دقائق. إذا لم تطلب الاستعادة فتجاهل الرسالة.</p></div>`})});
-    if(!response.ok)throw new Error('Email provider rejected request');recoveryRate.set(to,now);res.json({ok:true});
-  }catch(e){res.status(502).json({ok:false,message:'تعذر إرسال البريد حاليًا.'})}
-});
+app.post('/api/recovery-email',(req,res)=>res.status(410).json({ok:false,message:'تم نقل استعادة كلمة المرور إلى نظام المصادقة المركزي.'}));
+app.post('/api/admin-approval-email',(req,res)=>res.status(410).json({ok:false,message:'تم نقل مصادقة الأدمن إلى نظام المصادقة المركزي.'}));
 
-app.post('/api/admin-approval-email',async(req,res)=>{
-  const to=String(req.body?.to||'').trim(),username=String(req.body?.username||'').trim(),code=String(req.body?.code||'').trim();
-  if(!/^\S+@\S+\.\S+$/.test(to)||!username||!/^\d{6}$/.test(code))return res.status(400).json({ok:false,message:'طلب المصادقة غير صالح.'});
-  const now=Date.now(),rateKey='admin:'+to.toLowerCase(),last=recoveryRate.get(rateKey)||0;
-  if(now-last<60000)return res.status(429).json({ok:false,message:'انتظر دقيقة قبل إعادة إرسال رمز المصادقة.'});
-  const apiKey=process.env.RESEND_API_KEY,from=process.env.RECOVERY_FROM_EMAIL;
-  if(!apiKey||!from)return res.status(503).json({ok:false,message:'خدمة البريد غير مهيأة على الخادم.'});
-  const safeUsername=username.replace(/[<>&]/g,'');
-  try{
-    const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify({from,to:[to],subject:'Assets Pro — مصادقة تعديل حساب الأدمن',html:`<div dir="rtl" style="font-family:Arial"><h2>مصادقة تعديل حساب مدير النظام</h2><p>الأدمن الحالي: <b>${safeUsername}</b></p><p>رمز المصادقة: <b style="font-size:24px;letter-spacing:4px">${code}</b></p><p>الرمز صالح لمدة 10 دقائق ويستخدم مرة واحدة. إذا لم تطلب تعديل بيانات الأدمن فتجاهل الرسالة وراجع سجل الدخول.</p></div>`})});
-    if(!response.ok)throw new Error('Email provider rejected request');recoveryRate.set(rateKey,now);res.json({ok:true});
-  }catch(e){res.status(502).json({ok:false,message:'تعذر إرسال رمز مصادقة الأدمن حاليًا.'})}
-});
-
-app.post('/api/hr/save-month',(req,res)=>{
+app.post('/api/hr/save-month',auth.requirePage('hrlink'),(req,res)=>{
   const body=req.body||{};
   if(!body.period)return res.status(400).send('Period is required');
   const data=readJSON(HR_MONTHS,{months:[]});
@@ -148,7 +128,7 @@ app.post('/api/hr/save-month',(req,res)=>{
   res.json({ok:true,json:'hr_months.json',period:body.period,savedAt:data.updatedAt});
 });
 
-app.post('/api/export-journals',(req,res)=>{
+app.post('/api/export-journals',auth.requirePage('journals'),(req,res)=>{
   const journals=Array.isArray(req.body?.journals)?req.body.journals:[];
   if(!journals.length)return res.status(400).send('No journals');
   const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -161,4 +141,15 @@ app.post('/api/export-journals',(req,res)=>{
 
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'index.html')));
 
-app.listen(PORT,'0.0.0.0',()=>console.log(`Assets Pro running on port ${PORT}`));
+app.use((error,req,res,next)=>{
+  console.error('Unhandled server error:',error.message);
+  res.status(500).json({ok:false,message:'حدث خطأ غير متوقع في الخادم.'});
+});
+
+app.listen(PORT,'0.0.0.0',()=>console.log(`Assets Pro v3.7.0 running on port ${PORT}`));
+}
+
+start().catch(error=>{
+  console.error('Assets Pro failed to start:',error);
+  process.exitCode=1;
+});

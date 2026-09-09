@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Assets Pro v3.6.2 — Users & Admin Protection</title>
+  <title>Assets Pro v3.7.0 — Central Users Database</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <style>
@@ -183,7 +183,7 @@
       <h1>Assets Pro</h1>
       <div>Fixed Assets Management System</div>
       <div class="progress"><span></span></div>
-      <p>الإصدار v3.6.2 — Users & Admin Protection</p>
+      <p>الإصدار v3.7.0 — Central Users Database</p>
     </div>
   </section>
 
@@ -204,7 +204,7 @@
     </div>
   </section>
 
-  <div id="firstAdminModal" class="modal hidden"><div class="modal-card" style="width:min(560px,96vw)"><div class="modal-head"><h3>تهيئة المستخدم الرئيسي</h3></div><p class="note">يظهر هذا الإعداد مرة واحدة عند عدم وجود مستخدمين. احتفظ برمز الاستعادة في مكان آمن خارج النظام.</p><div class="grid-2"><label>اسم المستخدم<input id="setupAdminUser" autocomplete="off"></label><label>الاسم الكامل<input id="setupAdminName" value="مدير النظام"></label><label style="grid-column:1/-1">البريد الإلكتروني<input id="setupAdminEmail" type="email" autocomplete="email" placeholder="name@company.com"></label><label>كلمة المرور الجديدة<input id="setupAdminPassword" type="password" autocomplete="new-password"></label><label>تأكيد كلمة المرور<input id="setupAdminConfirm" type="password" autocomplete="new-password"></label><label style="grid-column:1/-1">رمز استعادة سري<input id="setupRecoveryCode" type="password" autocomplete="off" placeholder="8 أحرف أو أرقام على الأقل"></label></div><div class="toolbar"><button class="btn main" onclick="APSecurity.createFirstAdmin()">إنشاء المستخدم الرئيسي</button></div></div></div>
+  <div id="firstAdminModal" class="modal hidden"><div class="modal-card" style="width:min(560px,96vw)"><div class="modal-head"><h3>تهيئة المستخدم الرئيسي المركزي</h3></div><p class="note">يظهر هذا الإعداد مرة واحدة فقط لقاعدة البيانات كلها. نفّذه من الجهاز الأساسي لنقل المستخدمين الموجودين، واحتفظ برمز الاستعادة في مكان آمن.</p><div class="grid-2"><label>اسم المستخدم<input id="setupAdminUser" autocomplete="off"></label><label>الاسم الكامل<input id="setupAdminName" value="مدير النظام"></label><label style="grid-column:1/-1">البريد الإلكتروني<input id="setupAdminEmail" type="email" autocomplete="email" placeholder="name@company.com"></label><label>كلمة المرور الجديدة<input id="setupAdminPassword" type="password" autocomplete="new-password"></label><label>تأكيد كلمة المرور<input id="setupAdminConfirm" type="password" autocomplete="new-password"></label><label style="grid-column:1/-1">رمز استعادة سري<input id="setupRecoveryCode" type="password" autocomplete="off" placeholder="8 أحرف أو أرقام على الأقل"></label><label style="grid-column:1/-1">مفتاح التهيئة المركزية<input id="setupCentralKey" type="password" autocomplete="off" placeholder="نفس قيمة INITIAL_SETUP_KEY المحفوظة في Render"></label></div><div class="toolbar"><button class="btn main" onclick="APSecurity.createFirstAdmin()">إنشاء المستخدم الرئيسي</button></div></div></div>
 
   <div id="passwordRecoveryModal" class="modal hidden"><div class="modal-card" style="width:min(560px,96vw)"><div class="modal-head"><h3>استعادة بيانات الدخول</h3><button class="close-btn" onclick="APSecurity.closeRecovery()">×</button></div><p class="note">يمكن إرسال رمز تحقق واسم المستخدم إلى البريد المسجل، أو استخدام رمز الاستعادة الإداري.</p><div class="grid-2"><label>البريد الإلكتروني<input id="recoveryEmail" type="email" autocomplete="email"></label><div><label>إرسال رمز البريد</label><button type="button" class="btn" style="width:100%" onclick="APEmailRecovery.sendCode()">إرسال إلى البريد</button></div><label>اسم المستخدم<input id="recoveryUsername" autocomplete="username"></label><label>رمز البريد أو رمز الاستعادة<input id="recoveryCode" type="password" autocomplete="one-time-code"></label><label>كلمة المرور الجديدة<input id="recoveryNewPassword" type="password" autocomplete="new-password"></label><label>تأكيد كلمة المرور<input id="recoveryConfirmPassword" type="password" autocomplete="new-password"></label></div><div class="toolbar"><button class="btn main" onclick="APSecurity.resetPassword()">تحديث كلمة المرور</button><button class="btn" onclick="APSecurity.closeRecovery()">إلغاء</button></div></div></div>
 
@@ -212,7 +212,7 @@
     <aside>
       <div class="brand">
         <img id="sideLogo" class="mini-logo" alt="شعار الشركة" style="object-fit:contain;padding:5px" />
-        <div><strong>Assets Pro</strong><br><small>Enterprise v3.6.2</small></div>
+        <div><strong>Assets Pro</strong><br><small>Enterprise v3.7.0</small></div>
       </div>
       <nav class="ap-module-nav-static" id="apModuleSidebar">
 <button type="button" class="active" data-module="home">🏠 الرئيسية</button>
@@ -6500,12 +6500,12 @@ async function resetPassword(){const username=document.getElementById('recoveryU
 async function setRecoveryCode(){const current=sessionStorage.getItem('assetsProCurrentUser'),admin=systemUsers.find(x=>x.username===current&&x.role==='Admin');if(!admin)return alert('تعيين رمز الاستعادة متاح لمدير النظام فقط.');const first=prompt('أدخل رمز استعادة جديدًا (8 أحرف أو أرقام على الأقل):');if(first===null)return;if(first.length<8)return alert('رمز الاستعادة قصير.');const second=prompt('أعد إدخال رمز الاستعادة للتأكيد:');if(first!==second)return alert('رمزا الاستعادة غير متطابقين.');localStorage.setItem(RECOVERY_KEY,await hash(first));alert('تم حفظ بصمة رمز الاستعادة. احتفظ بالرمز نفسه في مكان آمن خارج النظام.')}
 async function migratePasswords(){let changed=false;for(const user of systemUsers){if(user.password&&!user.passwordHash){user.passwordHash=await hash(user.password);delete user.password;changed=true}}if(changed)localStorage.setItem('assetsProUsers',JSON.stringify(systemUsers))}
 function safeUsers(){return systemUsers.map(({password,...u})=>({...u,passwordHash:u.passwordHash||''}))}
-function fullBackup(){const storage={};for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith('assetsPro')||key==='hr_employees_stable')storage[key]=localStorage.getItem(key)}storage.assetsProUsers=JSON.stringify(safeUsers());const currentAssets=window.APDataEngine?.getAssets?.()||[];return {app:'Assets Pro',schema:'assets-pro-complete-backup-v3',version:'3.6.2',createdAt:new Date().toISOString(),security:'password-hashes-only-no-plain-passwords',storage,currentAssets:Array.isArray(currentAssets)?currentAssets:[]}}
+function fullBackup(){const storage={};for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if((key?.startsWith('assetsPro')&&key!=='assetsProUsers'&&key!=='assetsProRecoveryHash')||key==='hr_employees_stable')storage[key]=localStorage.getItem(key)}const currentAssets=window.APDataEngine?.getAssets?.()||[];return {app:'Assets Pro',schema:'assets-pro-complete-backup-v3',version:'3.7.0',createdAt:new Date().toISOString(),security:'central-users-excluded',storage,currentAssets:Array.isArray(currentAssets)?currentAssets:[]}}
 async function exportFullBackup(){await migratePasswords();const payload=fullBackup(),filename='AssetsPro_Complete_Backup_'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';try{const linked=await window.APSingleFileStorage?.saveJSON?.(['Data','Backups','Complete'],filename,payload,false);if(linked?.ok){localStorage.setItem('assetsProLastBackup',new Date().toLocaleString('ar-SA'));window.updateBackupInfo?.();alert('تم حفظ النسخة الاحتياطية مباشرة على الجهاز داخل:\n'+(window.APSingleFileStorage?.backupPath?.()||linked.path)+'\n\nاسم الملف:\n'+filename);return}}catch(e){alert('لم يتم حفظ النسخة الاحتياطية. اختر مجلد Data Assets وامنح الموقع صلاحية الكتابة ثم حاول مرة أخرى.\n\n'+(e?.message||''));return}alert('لم يتم حفظ النسخة الاحتياطية. حدد مجلد Data Assets ثم حاول مرة أخرى.')}
 function importFullBackup(event){const file=event.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const b=JSON.parse(reader.result);if(b?.app!=='Assets Pro'||b?.schema!=='assets-pro-complete-backup-v3'||!b.storage)throw new Error('invalid');if(!confirm('سيتم استبدال بيانات النظام الحالية بالنسخة الاحتياطية ثم إعادة تحميل البرنامج. متابعة؟'))return;Object.entries(b.storage).forEach(([key,value])=>{if(typeof value==='string')localStorage.setItem(key,value)});if(Array.isArray(b.currentAssets)&&b.currentAssets.length)localStorage.setItem('assetsProAssets',JSON.stringify(b.currentAssets));localStorage.setItem('assetsProLastBackup',new Date().toLocaleString('ar-SA')+' — استعادة');alert('تمت استعادة النسخة الاحتياطية بنجاح. سيعاد تحميل البرنامج الآن.');location.reload()}catch(e){alert('ملف النسخة الاحتياطية غير صالح أو من إصدار غير مدعوم.')}finally{event.target.value=''}};reader.readAsText(file,'utf-8')}
 window.APSecurity={hash,verifyPassword,openFirstSetup,createFirstAdmin,openRecovery,closeRecovery,resetPassword,setRecoveryCode};
 window.exportBackup=exportFullBackup;window.importBackup=importFullBackup;window.APCompleteBackup={export:exportFullBackup,import:importFullBackup,payload:fullBackup};
-document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{if(!systemUsers.length)openFirstSetup()},1900),{once:true});
+// First-admin setup is controlled by the central authentication server in v3.7.0.
 })();
 </script>
 <script id="v358PagePermissionsEmailRecovery">
@@ -6528,6 +6528,145 @@ async function sendCode(){const email=document.getElementById('recoveryEmail')?.
 window.APPageAccess={can,selected,setSelected,selectAll,apply,install,pages:PAGES};window.APEmailRecovery={sendCode};
 window.addEventListener('storage',event=>{if(event.key!=='assetsProUsers')return;try{systemUsers=JSON.parse(event.newValue||'[]')}catch(e){systemUsers=[]}const user=current();if(!user||user.status!=='Active'){if(!document.getElementById('app')?.classList.contains('hidden'))logout();return}apply()});
 document.addEventListener('DOMContentLoaded',()=>setTimeout(install,2100),{once:true});
+})();
+</script>
+<script id="v370CentralUsersAuthentication">
+(()=>{'use strict';
+const API={
+  async call(path,options={}){
+    const response=await fetch(path,{cache:'no-store',credentials:'same-origin',...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok)throw Object.assign(new Error(result.message||`HTTP ${response.status}`),{status:response.status,result});
+    return result;
+  },
+  get(path){return this.call(path)},
+  post(path,body){return this.call(path,{method:'POST',body:JSON.stringify(body||{})})},
+  delete(path){return this.call(path,{method:'DELETE'})}
+};
+let centralStatus={configured:false,initialized:false};
+let currentCentralUser=null;
+
+function showLogin(message='',danger=false){
+  document.getElementById('splash')?.classList.add('hidden');
+  document.getElementById('app')?.classList.add('hidden');
+  document.getElementById('login')?.classList.remove('hidden');
+  const msg=document.getElementById('loginMsg');if(msg&&message){msg.textContent=message;msg.style.color=danger?'var(--danger)':''}
+}
+function enterApp(user){
+  currentCentralUser=user;
+  systemUsers=[user];
+  sessionStorage.setItem('assetsProCurrentUser',user.username);
+  document.getElementById('firstAdminModal')?.classList.add('hidden');
+  document.getElementById('login')?.classList.add('hidden');
+  document.getElementById('app')?.classList.remove('hidden');
+  try{renderMaintenance()}catch(e){}
+  try{sessionStorage.setItem('assetsProActiveModule','home');window.APModules?.render?.('home')}catch(e){}
+  setTimeout(()=>window.APPageAccess?.apply?.(),50);
+  if(user.role==='Admin')refreshCentralUsers().catch(e=>console.error(e));
+}
+async function refreshCentralUsers(){
+  if(currentCentralUser?.role!=='Admin'){systemUsers=currentCentralUser?[currentCentralUser]:[];return systemUsers}
+  const result=await API.get('/api/users');systemUsers=result.users||[];
+  currentCentralUser=systemUsers.find(x=>x.id===currentCentralUser.id)||currentCentralUser;
+  sessionStorage.setItem('assetsProCurrentUser',currentCentralUser.username);
+  renderCentralUsers();window.APPageAccess?.apply?.();return systemUsers;
+}
+function renderCentralUsers(){
+  const body=document.getElementById('usersBody');if(!body)return;
+  try{fillAssetLists()}catch(e){}
+  const actor=currentCentralUser;
+  body.innerHTML=systemUsers.map((u,i)=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.username)}</td><td>${escapeHtml(u.email||'—')}</td><td>${escapeHtml(u.role)}</td><td>${escapeHtml(u.costCenter||'الكل')}</td><td><span class="status">${u.status==='Active'?'نشط':'موقوف'}</span></td><td>${escapeHtml(u.lastLogin?new Date(u.lastLogin).toLocaleString('ar-SA'):'—')}</td><td>${actor?.role==='Admin'?`<button class="small-btn" onclick="editUser(${i})">تعديل</button>`:'<span class="note">محمي</span>'} ${u.role!=='Admin'&&actor?.role==='Admin'?`<button class="small-btn danger" onclick="deleteUser(${i})">حذف</button>`:''}</td></tr>`).join('');
+  const total=document.getElementById('uTotal'),active=document.getElementById('uActive'),admins=document.getElementById('uAdmins'),last=document.getElementById('uLastLogin');
+  if(total)total.textContent=systemUsers.length;if(active)active.textContent=systemUsers.filter(u=>u.status==='Active').length;if(admins)admins.textContent=systemUsers.filter(u=>u.role==='Admin').length;
+  if(last)last.textContent=systemUsers.map(u=>u.lastLogin).filter(Boolean).sort().pop()?new Date(systemUsers.map(u=>u.lastLogin).filter(Boolean).sort().pop()).toLocaleString('ar-SA'):'—';
+  window.APAdminProtection?.refresh?.();
+}
+
+window.login=async function(){
+  const username=document.getElementById('username')?.value.trim()||'',password=document.getElementById('password')?.value||'',msg=document.getElementById('loginMsg');
+  if(!centralStatus.configured)return showLogin('قاعدة بيانات المستخدمين المركزية غير مهيأة بعد.',true);
+  if(!centralStatus.initialized){document.getElementById('firstAdminModal')?.classList.remove('hidden');return}
+  if(msg){msg.textContent='جارٍ التحقق من بيانات الدخول...';msg.style.color=''}
+  try{const result=await API.post('/api/auth/login',{username,password});resetLoginForm();enterApp(result.user)}
+  catch(error){if(msg){msg.textContent=error.message;msg.style.color='var(--danger)'}}
+};
+
+window.logout=async function(){
+  await API.post('/api/auth/logout',{}).catch(()=>{});currentCentralUser=null;systemUsers=[];sessionStorage.removeItem('assetsProCurrentUser');sessionStorage.removeItem('assetsProActiveModule');resetLoginForm();showLogin();
+};
+
+async function createFirstAdmin(){
+  const username=document.getElementById('setupAdminUser')?.value.trim()||'',name=document.getElementById('setupAdminName')?.value.trim()||'',email=document.getElementById('setupAdminEmail')?.value.trim()||'',password=document.getElementById('setupAdminPassword')?.value||'',confirmation=document.getElementById('setupAdminConfirm')?.value||'',recoveryCode=document.getElementById('setupRecoveryCode')?.value||'',setupKey=document.getElementById('setupCentralKey')?.value||'';
+  if(password!==confirmation)return alert('تأكيد كلمة المرور غير مطابق.');
+  let legacyUsers=[];try{const rows=JSON.parse(localStorage.getItem('assetsProUsers')||'[]');if(Array.isArray(rows))legacyUsers=await Promise.all(rows.map(async({name,username,email,password,passwordHash,role,costCenter,status,pages,lastLogin})=>({name,username,email,passwordHash:passwordHash||(password?await APSecurity.hash(password):''),role,costCenter,status,pages,lastLogin})))}catch(_){legacyUsers=[]}
+  try{const result=await API.post('/api/auth/setup',{username,name,email,password,recoveryCode,setupKey,legacyUsers});centralStatus.initialized=true;document.getElementById('firstAdminModal')?.classList.add('hidden');resetLoginForm();showLogin(`تم إنشاء المستخدم الرئيسي مركزيًا${result.migratedUsers?` ونقل ${result.migratedUsers} مستخدم إضافي`:''}. سجل الدخول الآن.`)}
+  catch(error){alert(error.message)}
+}
+
+async function saveCentralUser(){
+  if(currentCentralUser?.role!=='Admin')return alert('إدارة المستخدمين متاحة لمدير النظام فقط.');
+  const idx=String(document.getElementById('uEditIndex')?.value??''),target=idx!==''?systemUsers[Number(idx)]:null,password=document.getElementById('uPassword')?.value||'';
+  const payload={id:target?.id,name:document.getElementById('uName')?.value.trim(),username:document.getElementById('uUsername')?.value.trim(),email:document.getElementById('uEmail')?.value.trim(),password,role:document.getElementById('uRole')?.value,costCenter:document.getElementById('uCostCenter')?.value.trim(),status:document.getElementById('uStatus')?.value,pages:window.APPageAccess?.selected?.()||[],approvalCode:document.getElementById('adminApprovalCode')?.value.trim()||''};
+  try{
+    const result=await API.post('/api/users',payload);
+    if(target?.id===currentCentralUser.id){currentCentralUser=result.user;sessionStorage.setItem('assetsProCurrentUser',result.user.username)}
+    clearUserForm();await refreshCentralUsers();alert('تم حفظ المستخدم في قاعدة البيانات المركزية بنجاح.');
+  }catch(error){alert(error.message)}
+}
+
+async function deleteCentralUser(index){
+  const target=systemUsers[index];if(!target)return;if(target.role==='Admin')return alert('لا يمكن حذف حساب مدير النظام.');if(!confirm(`حذف المستخدم ${target.username} من جميع الأجهزة؟`))return;
+  try{await API.delete('/api/users/'+encodeURIComponent(target.id));await refreshCentralUsers();alert('تم حذف المستخدم من قاعدة البيانات المركزية.')}
+  catch(error){alert(error.message)}
+}
+
+async function requestAdminApproval(){
+  if(currentCentralUser?.role!=='Admin')return alert('لا يجوز تعديل بيانات الأدمن إلا بعد الدخول بحساب مدير نظام.');
+  const password=document.getElementById('adminApprovalPassword')?.value||'';
+  try{await API.post('/api/auth/admin-approval/request',{password});document.getElementById('adminApprovalCode').value='';document.getElementById('adminApprovalStatus').textContent='تم إرسال رمز صالح لمدة 10 دقائق إلى بريد الأدمن الحالي المسجل.';alert('تم إرسال رمز المصادقة إلى بريد الأدمن المسجل.')}
+  catch(error){alert(error.message)}
+}
+
+async function sendRecoveryCode(){
+  const email=document.getElementById('recoveryEmail')?.value.trim().toLowerCase()||'';
+  try{const result=await API.post('/api/auth/recovery/request',{email});alert(result.message||'إذا كان البريد مسجلًا فستصل رسالة الاستعادة.')}
+  catch(error){alert(error.message)}
+}
+
+async function resetCentralPassword(){
+  const username=document.getElementById('recoveryUsername')?.value.trim()||'',code=document.getElementById('recoveryCode')?.value||'',password=document.getElementById('recoveryNewPassword')?.value||'',confirmation=document.getElementById('recoveryConfirmPassword')?.value||'';
+  if(password!==confirmation)return alert('تأكيد كلمة المرور غير مطابق.');
+  try{await API.post('/api/auth/recovery/reset',{username,code,password});document.getElementById('passwordRecoveryModal')?.classList.add('hidden');resetLoginForm();showLogin('تم تحديث كلمة المرور مركزيًا. سجل الدخول بكلمة المرور الجديدة.');alert('تم تحديث كلمة المرور بنجاح.')}
+  catch(error){alert(error.message)}
+}
+
+async function setCentralRecoveryCode(){
+  if(currentCentralUser?.role!=='Admin')return alert('تعيين رمز الاستعادة متاح لمدير النظام فقط.');
+  const password=prompt('أدخل كلمة مرور الأدمن الحالية:');if(password===null)return;const recoveryCode=prompt('أدخل رمز استعادة جديدًا (8 أحرف أو أرقام على الأقل):');if(recoveryCode===null)return;const confirmation=prompt('أعد إدخال رمز الاستعادة للتأكيد:');if(recoveryCode!==confirmation)return alert('رمزا الاستعادة غير متطابقين.');
+  try{await API.post('/api/auth/recovery-code',{password,recoveryCode});alert('تم حفظ رمز الاستعادة في قاعدة البيانات المركزية.')}
+  catch(error){alert(error.message)}
+}
+
+async function boot(){
+  showLogin('جارٍ الاتصال بقاعدة بيانات المستخدمين المركزية...');
+  try{
+    centralStatus=await API.get('/api/auth/status');
+    if(!centralStatus.configured){document.getElementById('firstAdminModal')?.classList.add('hidden');return showLogin('يلزم إعداد DATABASE_URL في Render لتفعيل المستخدمين المركزيين.',true)}
+    if(!centralStatus.initialized&&!centralStatus.setupReady){document.getElementById('firstAdminModal')?.classList.add('hidden');return showLogin('أضف INITIAL_SETUP_KEY في Render ثم أعد النشر قبل تهيئة الأدمن.',true)}
+    if(!centralStatus.initialized){showLogin('لم تتم تهيئة مدير النظام المركزي بعد.');document.getElementById('firstAdminModal')?.classList.remove('hidden');return}
+    document.getElementById('firstAdminModal')?.classList.add('hidden');
+    try{const result=await API.get('/api/auth/me');enterApp(result.user)}catch(_){showLogin('أدخل بيانات الدخول المركزية الخاصة بك.')}
+  }catch(error){showLogin('تعذر الاتصال بنظام المستخدمين المركزي: '+error.message,true)}
+}
+
+window.saveUser=saveCentralUser;
+window.deleteUser=deleteCentralUser;
+window.renderUsers=renderCentralUsers;
+window.sendAdminApprovalCode=requestAdminApproval;
+if(window.APSecurity){window.APSecurity.createFirstAdmin=createFirstAdmin;window.APSecurity.resetPassword=resetCentralPassword;window.APSecurity.setRecoveryCode=setCentralRecoveryCode}
+if(window.APEmailRecovery)window.APEmailRecovery.sendCode=sendRecoveryCode;
+window.APCentralAuth={boot,refreshUsers:refreshCentralUsers,status:()=>({...centralStatus}),current:()=>currentCentralUser};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,1650),{once:true});else setTimeout(boot,100);
 })();
 </script>
 </body>
