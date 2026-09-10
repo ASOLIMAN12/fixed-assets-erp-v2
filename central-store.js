@@ -62,6 +62,19 @@ function createCentralStore(pool){
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS assetspro_audit_log_created_idx ON assetspro_audit_log(created_at DESC);
+      CREATE TABLE IF NOT EXISTS assetspro_attachments (
+        asset_number TEXT NOT NULL,
+        attachment_type TEXT NOT NULL,
+        file_name TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        file_size BIGINT NOT NULL,
+        checksum TEXT NOT NULL,
+        content BYTEA NOT NULL,
+        updated_by BIGINT REFERENCES assetspro_users(id) ON DELETE SET NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY(asset_number,attachment_type)
+      );
+      CREATE INDEX IF NOT EXISTS assetspro_attachments_updated_idx ON assetspro_attachments(updated_at DESC);
     `);
   }
 
@@ -140,7 +153,40 @@ function createCentralStore(pool){
     return write(documentKey,selected.rows[0].payload,{...context,expectedVersion:current?.version,reason:`استعادة الإصدار ${version}`});
   }
 
-  return {init,seed,read,write,versions,audit,restore,checksum,cleanPayload};
+  async function putAttachment(assetNumber,type,file,context={}){
+    const content=Buffer.isBuffer(file.content)?file.content:Buffer.from(file.content||'');
+    const digest=crypto.createHash('sha256').update(content).digest('hex');
+    const result=await pool.query(`INSERT INTO assetspro_attachments(asset_number,attachment_type,file_name,mime_type,file_size,checksum,content,updated_by)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+      ON CONFLICT(asset_number,attachment_type) DO UPDATE SET file_name=EXCLUDED.file_name,mime_type=EXCLUDED.mime_type,
+      file_size=EXCLUDED.file_size,checksum=EXCLUDED.checksum,content=EXCLUDED.content,updated_by=EXCLUDED.updated_by,updated_at=NOW()
+      RETURNING asset_number,attachment_type,file_name,mime_type,file_size,checksum,updated_at`,
+      [assetNumber,type,file.name,file.mime,content.length,digest,content,context.userId||null]);
+    await pool.query(`INSERT INTO assetspro_audit_log(actor_id,actor_username,action,entity_type,entity_key,details,ip_address)
+      VALUES($1,$2,'ATTACHMENT_SAVE','attachment',$3,$4::jsonb,$5)`,[context.userId||null,String(context.username||''),`${assetNumber}:${type}`,JSON.stringify({fileName:file.name,size:content.length,checksum:digest}),String(context.ip||'').slice(0,100)]);
+    return result.rows[0];
+  }
+
+  async function getAttachment(assetNumber,type,metaOnly=false){
+    const fields=metaOnly?'asset_number,attachment_type,file_name,mime_type,file_size,checksum,updated_at':'*';
+    const result=await pool.query(`SELECT ${fields} FROM assetspro_attachments WHERE asset_number=$1 AND attachment_type=$2`,[assetNumber,type]);
+    const row=result.rows[0];
+    if(!row)return null;
+    if(!metaOnly){
+      const actual=crypto.createHash('sha256').update(row.content).digest('hex');
+      if(actual!==row.checksum)throw Object.assign(new Error('فشل فحص سلامة المرفق.'),{code:'ATTACHMENT_INTEGRITY_FAILED',status:500});
+    }
+    return row;
+  }
+
+  async function deleteAttachment(assetNumber,type,context={}){
+    const result=await pool.query('DELETE FROM assetspro_attachments WHERE asset_number=$1 AND attachment_type=$2 RETURNING file_name,checksum',[assetNumber,type]);
+    if(result.rows[0])await pool.query(`INSERT INTO assetspro_audit_log(actor_id,actor_username,action,entity_type,entity_key,details,ip_address)
+      VALUES($1,$2,'ATTACHMENT_DELETE','attachment',$3,$4::jsonb,$5)`,[context.userId||null,String(context.username||''),`${assetNumber}:${type}`,JSON.stringify(result.rows[0]),String(context.ip||'').slice(0,100)]);
+    return !!result.rows[0];
+  }
+
+  return {init,seed,read,write,versions,audit,restore,putAttachment,getAttachment,deleteAttachment,checksum,cleanPayload};
 }
 
 module.exports={createCentralStore,checksum};

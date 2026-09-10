@@ -1087,5 +1087,18 @@ window.openAssetsPro=function(){location.href='/'};
 window.openHRPro=function(){location.href='/hr.html'};
 })();
 </script>
+<script id="v390CentralHRData">
+(()=>{'use strict';let version=null,applying=false,ready=false,timer=null;
+const isHR=key=>/^hr_/i.test(String(key||''))||/^assetsPro(?:HR|Employees|Custody)/.test(String(key||''));
+function collect(){const storage={};for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(isHR(key)){const value=localStorage.getItem(key);if(typeof value==='string')storage[key]=value}}return storage}
+async function api(options={}){const r=await fetch('/api/state/hr',{cache:'no-store',...options,headers:{...(options.body?{'Content-Type':'application/json'}:{})}}),data=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(data.message||`HTTP ${r.status}`),{status:r.status});return data}
+async function save(){if(!ready||applying)return;try{const out=await api({method:'PUT',body:JSON.stringify({storage:collect(),_serverVersion:version})});version=Number(out.version)||version;sessionStorage.setItem('assetsProHRServerVersion',String(version))}catch(e){if(e.status===409)await load();else console.warn('HR central save failed',e)}}
+function schedule(key){if(!ready||applying||!isHR(key))return;clearTimeout(timer);timer=setTimeout(async()=>{timer=null;await save()},1200)}
+async function load(){try{const data=await api(),nextVersion=Number(data._serverVersion)||null;if(!data.initialized){version=nextVersion;ready=true;await save();return}const marker=sessionStorage.getItem('assetsProHRServerVersion'),changed=marker!==String(nextVersion);applying=true;const storage=data.storage&&typeof data.storage==='object'?data.storage:{},keys=[];for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(isHR(key))keys.push(key)}keys.forEach(key=>{if(!Object.prototype.hasOwnProperty.call(storage,key))localStorage.removeItem(key)});Object.entries(storage).forEach(([key,value])=>{if(isHR(key)&&typeof value==='string')localStorage.setItem(key,value)});sessionStorage.setItem('assetsProHRServerVersion',String(nextVersion));version=nextVersion;applying=false;ready=true;if(changed)location.reload()}catch(e){applying=false;ready=true;console.warn('HR central load failed',e)}}
+const set=Storage.prototype.setItem,remove=Storage.prototype.removeItem;Storage.prototype.setItem=function(key,value){const out=set.apply(this,arguments);if(this===localStorage)schedule(key);return out};Storage.prototype.removeItem=function(key){const out=remove.apply(this,arguments);if(this===localStorage)schedule(key);return out};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load,{once:true});else load();setInterval(()=>{if(ready&&!timer)load()},120000);
+window.APHRCentral={load,save};
+})();
+</script>
 </body>
 </html>
