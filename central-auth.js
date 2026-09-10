@@ -5,10 +5,14 @@ const {promisify} = require('util');
 const {Pool} = require('pg');
 
 const scryptAsync = promisify(crypto.scrypt);
-const SESSION_COOKIE = 'assetspro_session';
+const SESSION_COOKIE = process.env.NODE_ENV === 'production' ? '__Host-assetspro_session' : 'assetspro_session';
 const SESSION_MS = 12 * 60 * 60 * 1000;
 const OTP_MS = 10 * 60 * 1000;
+const PASSWORD_MIN_LENGTH = Math.max(12, Math.min(64, Number(process.env.PASSWORD_MIN_LENGTH) || 12));
 const rate = new Map();
+const loginFailures = new Map();
+setInterval(()=>{const cutoff=Date.now()-15*60*1000;for(const [key,last] of rate)if(last<cutoff)rate.delete(key)},10*60*1000).unref();
+setInterval(()=>{const cutoff=Date.now()-30*60*1000;for(const [key,item] of loginFailures)if(item.last<cutoff)loginFailures.delete(key)},10*60*1000).unref();
 
 function normalizeEmail(value){return String(value || '').trim().toLowerCase()}
 function normalizeUsername(value){return String(value || '').trim()}
@@ -71,7 +75,7 @@ function publicUser(row){
 }
 
 function poolOptions(url){
-  const options = {connectionString:url, max:5, idleTimeoutMillis:30000};
+  const options = {connectionString:url, max:10, idleTimeoutMillis:30000, connectionTimeoutMillis:10000, query_timeout:30000, statement_timeout:30000, application_name:'assets-pro'};
   try{
     const host = new URL(url).hostname;
     if(process.env.DATABASE_SSL === 'true' || (process.env.DATABASE_SSL !== 'false' && !host.endsWith('.internal'))){
@@ -154,6 +158,18 @@ async function createCentralAuth(app, options={}){
           value TEXT NOT NULL,
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+        CREATE TABLE IF NOT EXISTS assetspro_security_events (
+          id BIGSERIAL PRIMARY KEY,
+          user_id BIGINT REFERENCES assetspro_users(id) ON DELETE SET NULL,
+          username TEXT NOT NULL DEFAULT '',
+          event_type TEXT NOT NULL,
+          success BOOLEAN NOT NULL DEFAULT TRUE,
+          ip_address TEXT NOT NULL DEFAULT '',
+          request_id TEXT NOT NULL DEFAULT '',
+          details JSONB NOT NULL DEFAULT '{}'::jsonb,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS assetspro_security_events_created_idx ON assetspro_security_events(created_at DESC);
       `);
       configured = true;
       console.log('Assets Pro central authentication database is ready');
@@ -168,6 +184,17 @@ async function createCentralAuth(app, options={}){
     if(!configured || !pool)return res.status(503).json({ok:false,message:'قاعدة بيانات المستخدمين المركزية غير مهيأة. أضف DATABASE_URL في Render ثم أعد النشر.'});
     next();
   };
+
+  async function securityEvent(req,eventType,success,details={},user=null){
+    if(!pool)return;
+    try{
+      await pool.query(`INSERT INTO assetspro_security_events(user_id,username,event_type,success,ip_address,request_id,details)
+        VALUES($1,$2,$3,$4,$5,$6,$7::jsonb)`,[
+        user?.id||null,String(user?.username||details.username||'').slice(0,100),String(eventType).slice(0,100),!!success,
+        String(req?.ip||'').slice(0,100),String(req?.requestId||'').slice(0,100),JSON.stringify(details)
+      ]);
+    }catch(error){console.error('Security audit write failed:',error.message)}
+  }
 
   async function sessionUser(req){
     if(!pool)return null;
@@ -215,6 +242,20 @@ async function createCentralAuth(app, options={}){
     }catch(error){next(error)}
   };
 
+  const requireAnyPage = pages => async(req, res, next) => {
+    if(!configured || !pool)return dbRequired(req, res, next);
+    try{
+      const user=await sessionUser(req);
+      if(!user)return res.status(401).json({ok:false,message:'انتهت جلسة الدخول. سجل الدخول مرة أخرى.'});
+      const allowed=Array.isArray(pages)?pages.map(String):[];
+      if(user.role!=='Admin' && !(Array.isArray(user.pages) && allowed.some(page=>user.pages.includes(page)))){
+        return res.status(403).json({ok:false,message:'ليس لديك صلاحية لتنفيذ هذه العملية.'});
+      }
+      req.assetsProUser=user;
+      next();
+    }catch(error){next(error)}
+  };
+
   async function consumeOtp(client, userId, purpose, code){
     const result = await client.query(`
       SELECT * FROM assetspro_otps
@@ -250,8 +291,8 @@ async function createCentralAuth(app, options={}){
     if(!crypto.timingSafeEqual(Buffer.from(sha256(providedSetupKey),'hex'),Buffer.from(sha256(initialSetupKey),'hex'))){
       return res.status(403).json({ok:false,message:'مفتاح التهيئة المركزية غير صحيح.'});
     }
-    if(!name || username.length < 3 || !validEmail(email) || password.length < 8 || recovery.length < 8){
-      return res.status(400).json({ok:false,message:'أكمل البيانات الصحيحة. كلمة المرور ورمز الاستعادة لا يقلان عن 8 أحرف.'});
+    if(!name || username.length < 3 || !validEmail(email) || password.length < PASSWORD_MIN_LENGTH || recovery.length < 12){
+      return res.status(400).json({ok:false,message:`أكمل البيانات الصحيحة. كلمة المرور لا تقل عن ${PASSWORD_MIN_LENGTH} حرفًا ورمز الاستعادة لا يقل عن 12 حرفًا.`});
     }
     const client = await pool.connect();
     try{
@@ -288,6 +329,7 @@ async function createCentralAuth(app, options={}){
         usedNames.add(legacyUsernameKey);usedEmails.add(legacyEmail);migratedUsers++;
       }
       await client.query('COMMIT');
+      await securityEvent(req,'INITIAL_SETUP',true,{migratedUsers},created.rows[0]);
       res.status(201).json({ok:true,user:publicUser(created.rows[0]),migratedUsers});
     }catch(error){await client.query('ROLLBACK').catch(() => {});next(error)}finally{client.release()}
   });
@@ -295,13 +337,26 @@ async function createCentralAuth(app, options={}){
   app.post('/api/auth/login', dbRequired, async(req, res, next) => {
     const username = normalizeUsername(req.body?.username).toLowerCase();
     const password = String(req.body?.password || '');
+    const failureKey=`${req.ip}:${username}`;
+    const failure=loginFailures.get(failureKey);
+    if(failure?.lockedUntil>Date.now()){
+      const retry=Math.max(1,Math.ceil((failure.lockedUntil-Date.now())/1000));
+      res.setHeader('Retry-After',String(retry));
+      await securityEvent(req,'LOGIN_BLOCKED',false,{username,retryAfterSeconds:retry});
+      return res.status(429).json({ok:false,message:'تم إيقاف محاولات الدخول مؤقتًا بسبب تكرار البيانات غير الصحيحة. حاول لاحقًا.'});
+    }
     if(!rateLimit(`login:${req.ip}:${username}`, 1500))return res.status(429).json({ok:false,message:'انتظر قليلًا قبل إعادة المحاولة.'});
     try{
       const result = await pool.query('SELECT * FROM assetspro_users WHERE username_key=$1', [username]);
       const user = result.rows[0];
       if(!user || user.status !== 'Active' || !await verifyPassword(password, user.password_hash)){
+        const now=Date.now(),windowStart=failure && now-failure.first<15*60*1000?failure.first:now;
+        const count=failure && windowStart===failure.first?failure.count+1:1;
+        loginFailures.set(failureKey,{first:windowStart,last:now,count,lockedUntil:count>=5?now+15*60*1000:0});
+        await securityEvent(req,'LOGIN_FAILED',false,{username,attempts:count});
         return res.status(401).json({ok:false,message:'اسم المستخدم أو كلمة المرور غير صحيحة.'});
       }
+      loginFailures.delete(failureKey);
       if(String(user.password_hash).startsWith('sha256$')){
         user.password_hash = await hashPassword(password);
         await pool.query('UPDATE assetspro_users SET password_hash=$1,updated_at=NOW() WHERE id=$2', [user.password_hash,user.id]);
@@ -311,6 +366,7 @@ async function createCentralAuth(app, options={}){
       await pool.query('INSERT INTO assetspro_sessions(token_hash,user_id,expires_at) VALUES($1,$2,$3)', [sha256(token), user.id, new Date(Date.now()+SESSION_MS)]);
       const updated = await pool.query('UPDATE assetspro_users SET last_login=NOW(),updated_at=NOW() WHERE id=$1 RETURNING *', [user.id]);
       res.setHeader('Set-Cookie', sessionCookie(token));
+      await securityEvent(req,'LOGIN_SUCCESS',true,{},updated.rows[0]);
       res.json({ok:true,user:publicUser(updated.rows[0])});
     }catch(error){next(error)}
   });
@@ -319,6 +375,7 @@ async function createCentralAuth(app, options={}){
     try{
       const token = cookieValue(req, SESSION_COOKIE);
       if(pool && token)await pool.query('DELETE FROM assetspro_sessions WHERE token_hash=$1', [sha256(token)]);
+      await securityEvent(req,'LOGOUT',true);
       res.setHeader('Set-Cookie', clearSessionCookie());
       res.json({ok:true});
     }catch(error){next(error)}
@@ -358,8 +415,8 @@ async function createCentralAuth(app, options={}){
     const costCenter = String(req.body?.costCenter || '').trim();
     const pages = Array.isArray(req.body?.pages) ? [...new Set(req.body.pages.map(String))] : [];
     const approvalCode = String(req.body?.approvalCode || '').trim();
-    if(!name || username.length < 3 || !validEmail(email) || (!id && password.length < 8) || (password && password.length < 8)){
-      return res.status(400).json({ok:false,message:'أكمل البيانات الصحيحة. كلمة المرور لا تقل عن 8 أحرف.'});
+    if(!name || username.length < 3 || !validEmail(email) || (!id && password.length < PASSWORD_MIN_LENGTH) || (password && password.length < PASSWORD_MIN_LENGTH)){
+      return res.status(400).json({ok:false,message:`أكمل البيانات الصحيحة. كلمة المرور لا تقل عن ${PASSWORD_MIN_LENGTH} حرفًا.`});
     }
     const client = await pool.connect();
     try{
@@ -387,6 +444,7 @@ async function createCentralAuth(app, options={}){
           [name,username,username.toLowerCase(),email,email,await hashPassword(password),role,costCenter,status,JSON.stringify(pages)]);
       }
       await client.query('COMMIT');
+      await securityEvent(req,existing?'USER_UPDATED':'USER_CREATED',true,{targetUserId:Number(saved.rows[0].id),targetUsername:saved.rows[0].username,role,status},req.assetsProUser);
       res.json({ok:true,user:publicUser(saved.rows[0])});
     }catch(error){
       await client.query('ROLLBACK').catch(() => {});
@@ -401,6 +459,7 @@ async function createCentralAuth(app, options={}){
       if(!target.rows[0])return res.status(404).json({ok:false,message:'المستخدم غير موجود.'});
       if(target.rows[0].role === 'Admin')return res.status(403).json({ok:false,message:'لا يمكن حذف حساب مدير النظام.'});
       await pool.query('DELETE FROM assetspro_users WHERE id=$1', [Number(req.params.id)]);
+      await securityEvent(req,'USER_DELETED',true,{targetUserId:Number(req.params.id),targetUsername:target.rows[0].username},req.assetsProUser);
       res.json({ok:true});
     }catch(error){next(error)}
   });
@@ -426,7 +485,7 @@ async function createCentralAuth(app, options={}){
     const username = normalizeUsername(req.body?.username).toLowerCase();
     const code = String(req.body?.code || '');
     const password = String(req.body?.password || '');
-    if(!username || code.length < 6 || password.length < 8)return res.status(400).json({ok:false,message:'تحقق من اسم المستخدم والرمز وكلمة المرور الجديدة.'});
+    if(!username || code.length < 6 || password.length < PASSWORD_MIN_LENGTH)return res.status(400).json({ok:false,message:`تحقق من اسم المستخدم والرمز. كلمة المرور الجديدة لا تقل عن ${PASSWORD_MIN_LENGTH} حرفًا.`});
     const client = await pool.connect();
     try{
       await client.query('BEGIN');
@@ -442,6 +501,7 @@ async function createCentralAuth(app, options={}){
       await client.query("UPDATE assetspro_users SET password_hash=$1,status='Active',updated_at=NOW() WHERE id=$2", [await hashPassword(password), user.id]);
       await client.query('DELETE FROM assetspro_sessions WHERE user_id=$1', [user.id]);
       await client.query('COMMIT');
+      await securityEvent(req,'PASSWORD_RESET',true,{},user);
       res.json({ok:true});
     }catch(error){await client.query('ROLLBACK').catch(() => {});next(error)}finally{client.release()}
   });
@@ -449,16 +509,17 @@ async function createCentralAuth(app, options={}){
   app.post('/api/auth/recovery-code', admin, async(req, res, next) => {
     const password = String(req.body?.password || '');
     const recoveryCode = String(req.body?.recoveryCode || '');
-    if(recoveryCode.length < 8)return res.status(400).json({ok:false,message:'رمز الاستعادة يجب ألا يقل عن 8 أحرف أو أرقام.'});
+    if(recoveryCode.length < 12)return res.status(400).json({ok:false,message:'رمز الاستعادة يجب ألا يقل عن 12 حرفًا أو رقمًا.'});
     try{
       if(!await verifyPassword(password, req.assetsProUser.password_hash))return res.status(401).json({ok:false,message:'كلمة مرور الأدمن غير صحيحة.'});
       await pool.query(`INSERT INTO assetspro_auth_settings(key,value) VALUES('recovery_hash',$1)
         ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`, [await hashPassword(recoveryCode)]);
+      await securityEvent(req,'RECOVERY_CODE_CHANGED',true,{},req.assetsProUser);
       res.json({ok:true});
     }catch(error){next(error)}
   });
 
-  return {configured, required, admin, requirePage, sessionUser, publicUser};
+  return {configured, pool, required, admin, requirePage, requireAnyPage, sessionUser, publicUser, securityEvent, passwordMinLength:PASSWORD_MIN_LENGTH};
 }
 
 module.exports = {createCentralAuth};

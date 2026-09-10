@@ -3,12 +3,22 @@ services:
     name: assets-pro
     runtime: node
     plan: free
-    buildCommand: npm install
+    buildCommand: npm ci --omit=dev
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
         value: 20
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: INITIAL_SETUP_KEY
+        sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: RECOVERY_FROM_EMAIL
+        sync: false
+      - key: PASSWORD_MIN_LENGTH
+        value: 12
+      - key: ALLOWED_ORIGINS
         sync: false
